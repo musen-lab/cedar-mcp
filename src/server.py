@@ -28,12 +28,22 @@ def main():
         type=str,
         help="CEDAR API key to use instead of environment variable",
     )
+    parser.add_argument(
+        "--bioportal-api-key",
+        type=str,
+        help="BioPortal API key to use instead of environment variable",
+    )
     args = parser.parse_args()
 
     # Use command-line argument if provided, otherwise use environment variable
     CEDAR_API_KEY = args.cedar_api_key or os.getenv("CEDAR_API_KEY")
     if not CEDAR_API_KEY:
         print("Error: CEDAR API key not provided. Please set CEDAR_API_KEY environment variable or use --cedar-api-key.")
+        sys.exit(1)
+
+    BIOPORTAL_API_KEY = args.bioportal_api_key or os.getenv("BIOPORTAL_API_KEY")
+    if not BIOPORTAL_API_KEY:
+        print("Error: BioPortal API key not provided. Please set BIOPORTAL_API_KEY environment variable or use --bioportal-api-key.")
         sys.exit(1)
 
     # Register MCP tools
