@@ -78,7 +78,7 @@ def main():
             return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
         
         # Always clean the response
-        template_data = clean_template_response(template_data)
+        template_data = clean_template_response(template_data, BIOPORTAL_API_KEY)
         
         return template_data
 

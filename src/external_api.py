@@ -3,7 +3,7 @@
 import os
 from typing import Any, Dict
 
-def fetch_bioportal_children(branch_uri: str, api_key: str) -> Dict[str, Any]:
+def get_children_from_branch(branch_iri: str, ontology_acronym: str, bioportal_api_key: str) -> Dict[str, Any]:
     """
     Fetch children terms from BioPortal for a given branch URI.
     
@@ -11,8 +11,9 @@ def fetch_bioportal_children(branch_uri: str, api_key: str) -> Dict[str, Any]:
     For now, this is a placeholder that returns empty dict.
     
     Args:
-        branch_uri: URI of the branch to get children for
-        api_key: BioPortal API key for authentication
+        branch_iri: IRI of the branch to get children for
+        ontology_acronym: <write a description>
+        bioportal_api_key: BioPortal API key for authentication
         
     Returns:
         Dictionary containing raw BioPortal API response with children data
@@ -25,19 +26,3 @@ def fetch_bioportal_children(branch_uri: str, api_key: str) -> Dict[str, Any]:
     
     # For now, return empty dict until API integration is implemented
     return {"children": []}
-
-
-def get_bioportal_api_key() -> str:
-    """
-    Get BioPortal API key from environment variables.
-    
-    Returns:
-        BioPortal API key
-        
-    Raises:
-        ValueError: If API key is not found
-    """
-    api_key = os.getenv("BIOPORTAL_API_KEY")
-    if not api_key:
-        raise ValueError("BIOPORTAL_API_KEY environment variable is required")
-    return api_key

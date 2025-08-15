@@ -11,7 +11,7 @@ from .model import (
     FieldDefinition,
     SimplifiedTemplate
 )
-from .external_api import fetch_bioportal_children, get_bioportal_api_key
+from .external_api import get_children_from_branch
 
 
 def _determine_datatype(field_data: Dict[str, Any]) -> str:
@@ -51,7 +51,7 @@ def _determine_datatype(field_data: Dict[str, Any]) -> str:
     return 'string'
 
 
-def _extract_controlled_term_values(field_data: Dict[str, Any]) -> Optional[List[ControlledTermValue]]:
+def _extract_controlled_term_values(field_data: Dict[str, Any], bioportal_api_key: str) -> Optional[List[ControlledTermValue]]:
     """
     Extract controlled term values from field constraints.
     
@@ -115,14 +115,11 @@ def _extract_controlled_term_values(field_data: Dict[str, Any]) -> Optional[List
             if isinstance(branch, dict) and 'name' in branch and 'uri' in branch:
                 # Add the branch itself as a value
                 branch_iri = branch['uri']
-                branch_label = branch['name']
-                if branch_iri not in values_dict:
-                    values_dict[branch_iri] = ControlledTermValue(label=branch_label, iri=branch_iri)
+                ontology_acronym = branch['acronym']
                 
                 # Fetch children from BioPortal
                 try:
-                    api_key = get_bioportal_api_key()
-                    bioportal_response = fetch_bioportal_children(branch_iri, api_key)
+                    bioportal_response = get_children_from_branch(branch_iri, ontology_acronym, bioportal_api_key)
                     children_data = bioportal_response.get("children", [])
                     
                     # Convert dict response to ControlledTermValue objects
@@ -193,7 +190,7 @@ def _extract_default_value(field_data: Dict[str, Any]) -> Optional[Union[Control
     return None
 
 
-def _transform_field(field_name: str, field_data: Dict[str, Any]) -> FieldDefinition:
+def _transform_field(field_name: str, field_data: Dict[str, Any], bioportal_api_key: str) -> FieldDefinition:
     """
     Transform a single field from input JSON-LD to output structure.
     
@@ -238,7 +235,7 @@ def _transform_field(field_name: str, field_data: Dict[str, Any]) -> FieldDefini
     )
 
 
-def clean_template_response(template_data: Dict[str, Any]) -> Dict[str, Any]:
+def clean_template_response(template_data: Dict[str, Any], bioportal_api_key: str) -> Dict[str, Any]:
     """
     Clean and transform the raw CEDAR template JSON-LD to simplified YAML structure.
     
@@ -272,7 +269,7 @@ def clean_template_response(template_data: Dict[str, Any]) -> Dict[str, Any]:
         if field_name in properties:
             field_data = properties[field_name]
             if isinstance(field_data, dict) and '@type' in field_data:
-                output_field = _transform_field(field_name, field_data)
+                output_field = _transform_field(field_name, field_data, bioportal_api_key)
                 output_fields.append(output_field)
     
     # Create output template
