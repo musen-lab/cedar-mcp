@@ -10,7 +10,7 @@ import requests
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
-from processing import clean_template_response
+from .processing import clean_template_response
 
 
 def main():

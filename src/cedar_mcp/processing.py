@@ -120,14 +120,22 @@ def _extract_controlled_term_values(field_data: Dict[str, Any], bioportal_api_ke
                 # Fetch children from BioPortal
                 try:
                     bioportal_response = get_children_from_branch(branch_iri, ontology_acronym, bioportal_api_key)
-                    children_data = bioportal_response.get("children", [])
                     
-                    # Convert dict response to ControlledTermValue objects
-                    for child_data in children_data:
-                        if isinstance(child_data, dict) and "label" in child_data and "iri" in child_data:
-                            child_iri = child_data["iri"]
-                            child_label = child_data["label"]
-                            if child_iri not in values_dict:
+                    # Check for API errors first
+                    if "error" in bioportal_response:
+                        # Skip processing if there was an API error
+                        continue
+                    
+                    # Parse the raw BioPortal response
+                    collection = bioportal_response.get('collection', [])
+                    
+                    # Convert BioPortal response to ControlledTermValue objects
+                    for item in collection:
+                        if isinstance(item, dict):
+                            child_label = item.get('prefLabel')
+                            child_iri = item.get('@id')
+                            
+                            if child_label and child_iri and child_iri not in values_dict:
                                 values_dict[child_iri] = ControlledTermValue(
                                     label=child_label,
                                     iri=child_iri
@@ -218,7 +226,7 @@ def _transform_field(field_name: str, field_data: Dict[str, Any], bioportal_api_
     regex = constraints.get('regex')
     
     # Extract controlled term values
-    values = _extract_controlled_term_values(field_data)
+    values = _extract_controlled_term_values(field_data, bioportal_api_key)
     
     # Extract default value
     default = _extract_default_value(field_data)
