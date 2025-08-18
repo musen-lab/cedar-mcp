@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import json
-import yaml
 from typing import Any, Dict, List, Optional, Union
 
 from .model import (
@@ -289,27 +287,6 @@ def clean_template_response(template_data: Dict[str, Any], bioportal_api_key: st
     
     # Convert to dictionary for YAML export
     return output_template.model_dump(exclude_none=True)
-
-
-def transform_jsonld_to_yaml(input_file_path: str, output_file_path: str, bioportal_api_key: str = "") -> None:
-    """
-    Transform a CEDAR JSON-LD template file to simplified YAML format.
-    
-    Args:
-        input_file_path: Path to input JSON-LD file
-        output_file_path: Path to output YAML file
-        bioportal_api_key: BioPortal API key for fetching controlled term values (optional)
-    """
-    # Load input JSON-LD
-    with open(input_file_path, 'r', encoding='utf-8') as f:
-        input_data = json.load(f)
-    
-    # Transform the template
-    result = clean_template_response(input_data, bioportal_api_key)
-    
-    # Export to YAML
-    with open(output_file_path, 'w', encoding='utf-8') as f:
-        yaml.dump(result, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
 def clean_template_instance_response(instance_data: Dict[str, Any]) -> Dict[str, Any]:

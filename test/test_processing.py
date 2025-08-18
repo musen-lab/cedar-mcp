@@ -8,18 +8,13 @@ from src.cedar_mcp.processing import (
     _extract_default_value,
     _transform_field,
     clean_template_response,
-    clean_template_instance_response,
-    transform_jsonld_to_yaml
+    clean_template_instance_response
 )
 from src.cedar_mcp.model import (
     ControlledTermValue,
     ControlledTermDefault,
     FieldDefinition
 )
-import tempfile
-import json
-import yaml
-import os
 
 
 class TestDetermineDatatype:
@@ -322,41 +317,6 @@ class TestCleanTemplateResponse:
         assert result["name"] == "Unnamed Template"
 
 
-class TestTransformJsonldToYaml:
-    """Tests for transform_jsonld_to_yaml function."""
-
-    def test_transform_file_to_yaml(self, sample_minimal_template_data: Dict[str, Any]):
-        """Test complete file transformation from JSON-LD to YAML."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as input_file:
-            json.dump(sample_minimal_template_data, input_file)
-            input_path = input_file.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as output_file:
-            output_path = output_file.name
-        
-        try:
-            # This function doesn't use BioPortal API directly in file mode
-            transform_jsonld_to_yaml(input_path, output_path, "")
-            
-            # Verify YAML file was created and is valid
-            assert os.path.exists(output_path)
-            
-            with open(output_path, 'r') as f:
-                yaml_data = yaml.safe_load(f)
-            
-            assert yaml_data["type"] == "template"
-            assert yaml_data["name"] == "Test Template"
-            assert "children" in yaml_data
-            
-        finally:
-            # Clean up temporary files
-            os.unlink(input_path)
-            os.unlink(output_path)
-
-    def test_transform_invalid_input_file(self):
-        """Test handling of invalid input file."""
-        with pytest.raises(FileNotFoundError):
-            transform_jsonld_to_yaml("/nonexistent/file.json", "/tmp/output.yaml", "")
 
 
 class TestCleanTemplateInstanceResponse:
