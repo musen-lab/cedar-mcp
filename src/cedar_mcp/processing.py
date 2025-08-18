@@ -310,3 +310,75 @@ def transform_jsonld_to_yaml(input_file_path: str, output_file_path: str, biopor
     # Export to YAML
     with open(output_file_path, 'w', encoding='utf-8') as f:
         yaml.dump(result, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
+def clean_template_instance_response(instance_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Clean and transform CEDAR template instance JSON-LD to simplified structure.
+    
+    Removes metadata fields and transforms JSON-LD specific attributes:
+    - Removes: '@context', 'schema:isBasedOn', 'schema:name', 'schema:description', 
+               'pav:createdOn', 'pav:createdBy', 'oslc:modifiedBy', '@id' from root
+    - Transforms: '@id' → 'iri', 'rdfs:label' → 'label' throughout
+    - Flattens: '@value' objects to their direct values
+    
+    Args:
+        instance_data: Raw instance data from CEDAR (JSON-LD format)
+        
+    Returns:
+        Cleaned and transformed instance data as dictionary
+    """
+    # Remove metadata fields from root level
+    metadata_fields = {
+        '@context', 'schema:isBasedOn', 'schema:name', 'schema:description',
+        'pav:createdOn', 'pav:createdBy', 'oslc:modifiedBy', '@id'
+    }
+    
+    # Create cleaned copy
+    cleaned_data = {}
+    for key, value in instance_data.items():
+        if key not in metadata_fields:
+            cleaned_data[key] = value
+    
+    # Recursively transform the entire structure
+    return _transform_jsonld_structure(cleaned_data)
+
+
+def _transform_jsonld_structure(obj: Any) -> Any:
+    """
+    Recursively transform JSON-LD structure to simplified format.
+    
+    Args:
+        obj: Any JSON-LD object (dict, list, or primitive)
+        
+    Returns:
+        Transformed object with simplified structure
+    """
+    if isinstance(obj, dict):
+        # Handle @value flattening first
+        if '@value' in obj and len(obj) == 1:
+            return obj['@value']
+        
+        # Transform dictionary
+        transformed = {}
+        for key, value in obj.items():
+            # Transform key names
+            if key == '@id':
+                new_key = 'iri'
+            elif key == 'rdfs:label':
+                new_key = 'label'
+            else:
+                new_key = key
+            
+            # Recursively transform the value
+            transformed[new_key] = _transform_jsonld_structure(value)
+        
+        return transformed
+    
+    elif isinstance(obj, list):
+        # Transform each item in the list
+        return [_transform_jsonld_structure(item) for item in obj]
+    
+    else:
+        # Primitive types (str, int, float, bool, None) - return as-is
+        return obj
