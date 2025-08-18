@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import pytest
-from typing import Dict, Any
-from src.cedar_mcp.external_api import get_children_from_branch
+from typing import Dict
+from src.cedar_mcp.external_api import get_children_from_branch, search_instance_ids, get_instance
 
 
 @pytest.mark.integration
@@ -133,3 +133,40 @@ class TestGetChildrenFromBranch:
             # Should return valid response (either data or reasonable error)
             assert isinstance(result, dict)
             assert "error" in result or "collection" in result
+
+
+class TestSearchInstanceIds:
+    """Tests for search_instance_ids function."""
+    
+    def test_search_instances_basic_functionality(self, cedar_api_key: str):
+        """Test basic search functionality."""
+        template_id = "8b47bae6-db32-4b13-9d12-d012f0be9412"
+        
+        result = search_instance_ids(template_id, cedar_api_key, limit_per_call=2)
+        
+        # Should have expected structure
+        assert "instance_ids" in result
+        assert "total_count" in result
+        assert isinstance(result["instance_ids"], list)
+        assert isinstance(result["total_count"], int)
+        
+        # Should have found instances (this template has many)
+        if "error" not in result:
+            assert result["total_count"] > 0
+    
+    def test_search_instances_invalid_api_key(self):
+        """Test search with invalid API key."""
+        result = search_instance_ids("8b47bae6-db32-4b13-9d12-d012f0be9412", "invalid-key", limit_per_call=2)
+        assert "error" in result
+
+
+class TestGetInstance:
+    """Tests for get_instance function."""
+    
+    def test_get_instance_invalid_api_key(self):
+        """Test fetching instance with invalid API key."""
+        instance_id = "https://repo.metadatacenter.org/template-instances/test-id"
+        result = get_instance(instance_id, "invalid-api-key")
+        assert "error" in result
+
+

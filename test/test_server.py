@@ -5,6 +5,7 @@ from typing import Dict, Any
 from unittest.mock import patch, MagicMock
 import requests
 from src.cedar_mcp.server import main
+from src.cedar_mcp.external_api import search_instance_ids, get_instance
 import sys
 import io
 import os
@@ -325,3 +326,66 @@ class TestEndToEndWorkflow:
             
         except requests.exceptions.RequestException as e:
             pytest.fail(f"BioPortal integration test failed: {str(e)}")
+
+
+@pytest.mark.integration
+class TestGetInstancesBasedOnTemplate:
+    """Integration tests for the complete get_instances_based_on_template MCP tool."""
+    
+    def test_get_instances_based_on_template_integration(self, cedar_api_key: str):
+        """Test complete get_instances_based_on_template workflow with real API."""
+        template_id = "8b47bae6-db32-4b13-9d12-d012f0be9412"
+        
+        # Step 1: Search for instances
+        search_result = search_instance_ids(template_id, cedar_api_key, limit_per_call=3)
+        
+        if "error" in search_result:
+            pytest.skip(f"Search failed: {search_result['error']}")
+        
+        if not search_result["instance_ids"]:
+            pytest.skip("No instances found for testing")
+        
+        # Step 2: Fetch first 2 instances only for testing
+        test_instance_ids = search_result["instance_ids"][:2]
+        instances = []
+        failed_instances = []
+        
+        for instance_id in test_instance_ids:
+            instance_content = get_instance(instance_id, cedar_api_key)
+            
+            if "error" in instance_content:
+                failed_instances.append({
+                    "instance_id": instance_id,
+                    "error": instance_content["error"]
+                })
+            else:
+                instances.append(instance_content)
+        
+        # Verify results
+        assert len(instances) + len(failed_instances) == len(test_instance_ids)
+        
+        # At least some should succeed
+        assert len(instances) > 0, "No instances were successfully fetched"
+        
+        # Verify instance structure before cleaning
+        for instance in instances:
+            assert "@id" in instance
+            assert "schema:isBasedOn" in instance
+            assert instance["schema:isBasedOn"] == f"https://repo.metadatacenter.org/templates/{template_id}"
+        
+        # Test cleaning integration
+        from src.cedar_mcp.processing import clean_template_instance_response
+        
+        cleaned_instances = []
+        for instance in instances:
+            cleaned = clean_template_instance_response(instance)
+            cleaned_instances.append(cleaned)
+            
+            # Verify cleaning worked
+            metadata_fields = {'@context', 'schema:isBasedOn', 'schema:name', '@id'}
+            for field in metadata_fields:
+                assert field not in cleaned, f"Metadata field {field} should be removed"
+        
+        # Verify we have cleaned instances
+        assert len(cleaned_instances) > 0
+        assert all(isinstance(inst, dict) for inst in cleaned_instances)

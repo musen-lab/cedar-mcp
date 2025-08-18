@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
 import pytest
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any
 from src.cedar_mcp.processing import (
     _determine_datatype,
     _extract_controlled_term_values,
     _extract_default_value,
     _transform_field,
     clean_template_response,
+    clean_template_instance_response,
     transform_jsonld_to_yaml
 )
 from src.cedar_mcp.model import (
     ControlledTermValue,
     ControlledTermDefault,
-    FieldDefinition,
-    SimplifiedTemplate
+    FieldDefinition
 )
 import tempfile
 import json
@@ -357,3 +357,45 @@ class TestTransformJsonldToYaml:
         """Test handling of invalid input file."""
         with pytest.raises(FileNotFoundError):
             transform_jsonld_to_yaml("/nonexistent/file.json", "/tmp/output.yaml", "")
+
+
+class TestCleanTemplateInstanceResponse:
+    """Tests for clean_template_instance_response function - core transformations."""
+    
+    def test_metadata_removal_and_transformations(self):
+        """Test metadata removal and all core transformations."""
+        sample_instance = {
+            "@context": {"schema": "http://schema.org/"},
+            "@id": "https://repo.metadatacenter.org/template-instances/test-id",
+            "schema:isBasedOn": "https://repo.metadatacenter.org/templates/test-template",
+            "schema:name": "Test Instance",
+            "pav:createdOn": "2021-11-18T10:40:02-08:00",
+            "cell_type": {
+                "@id": "http://purl.obolibrary.org/obo/CL_1000412",
+                "rdfs:label": "endothelial cell"
+            },
+            "is_ftu": {"@value": "No"},
+            "doi": [
+                {"@value": "doi:10.1038/s41467-019-10861-2"},
+                {"@value": "doi:10.1038/s41586-020-2941-1"}
+            ]
+        }
+        
+        cleaned = clean_template_instance_response(sample_instance)
+        
+        # Verify metadata fields removed
+        metadata_fields = {'@context', 'schema:isBasedOn', 'schema:name', 'pav:createdOn', '@id'}
+        for field in metadata_fields:
+            assert field not in cleaned
+        
+        # Verify @id → iri transformation
+        assert cleaned["cell_type"]["iri"] == "http://purl.obolibrary.org/obo/CL_1000412"
+        assert "@id" not in cleaned["cell_type"]
+        
+        # Verify rdfs:label → label transformation
+        assert cleaned["cell_type"]["label"] == "endothelial cell"
+        assert "rdfs:label" not in cleaned["cell_type"]
+        
+        # Verify @value flattening
+        assert cleaned["is_ftu"] == "No"
+        assert cleaned["doi"] == ["doi:10.1038/s41467-019-10861-2", "doi:10.1038/s41586-020-2941-1"]
