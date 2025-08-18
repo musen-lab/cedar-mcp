@@ -41,6 +41,23 @@ Thumbs.db
 # Project specific
 *.log
 .env
+.env.test
+.env.local
+.env.development
+.env.staging
+.env.production
 .claude
 .obsidian
-CLAUDE.md
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Temporary files
+*.tmp
+*.temp
