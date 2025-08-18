@@ -61,7 +61,7 @@ def _extract_controlled_term_values(field_data: Dict[str, Any], bioportal_api_ke
     
     Args:
         field_data: Field data from input JSON-LD
-        
+        bioportal_api_key: BioPortal API key for fetching controlled term values
     Returns:
         List of controlled term values or None if not a controlled term field
     """
@@ -205,7 +205,7 @@ def _transform_field(field_name: str, field_data: Dict[str, Any], bioportal_api_
     Args:
         field_name: Name of the field
         field_data: Field data from input JSON-LD
-        
+        bioportal_api_key: BioPortal API key for fetching controlled term values
     Returns:
         Transformed output field
     """
@@ -249,7 +249,7 @@ def clean_template_response(template_data: Dict[str, Any], bioportal_api_key: st
     
     Args:
         template_data: Raw template data from CEDAR (JSON-LD format)
-        
+        bioportal_api_key: BioPortal API key for fetching controlled term values
     Returns:
         Cleaned and transformed template data as dictionary (ready for YAML export)
     """
@@ -291,20 +291,21 @@ def clean_template_response(template_data: Dict[str, Any], bioportal_api_key: st
     return output_template.model_dump(exclude_none=True)
 
 
-def transform_jsonld_to_yaml(input_file_path: str, output_file_path: str) -> None:
+def transform_jsonld_to_yaml(input_file_path: str, output_file_path: str, bioportal_api_key: str = "") -> None:
     """
     Transform a CEDAR JSON-LD template file to simplified YAML format.
     
     Args:
         input_file_path: Path to input JSON-LD file
         output_file_path: Path to output YAML file
+        bioportal_api_key: BioPortal API key for fetching controlled term values (optional)
     """
     # Load input JSON-LD
     with open(input_file_path, 'r', encoding='utf-8') as f:
         input_data = json.load(f)
     
     # Transform the template
-    result = clean_template_response(input_data)
+    result = clean_template_response(input_data, bioportal_api_key)
     
     # Export to YAML
     with open(output_file_path, 'w', encoding='utf-8') as f:
