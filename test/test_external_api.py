@@ -142,21 +142,31 @@ class TestSearchInstanceIds:
         """Test basic search functionality."""
         template_id = "8b47bae6-db32-4b13-9d12-d012f0be9412"
         
-        result = search_instance_ids(template_id, cedar_api_key, limit_per_call=2)
+        result = search_instance_ids(template_id, cedar_api_key, limit=2)
         
         # Should have expected structure
         assert "instance_ids" in result
-        assert "total_count" in result
+        assert "pagination" in result
         assert isinstance(result["instance_ids"], list)
-        assert isinstance(result["total_count"], int)
+        assert isinstance(result["pagination"], dict)
+        
+        # Check pagination metadata structure
+        pagination = result["pagination"]
+        assert "total_count" in pagination
+        assert "limit" in pagination
+        assert "offset" in pagination
+        assert "current_page" in pagination
+        assert "total_pages" in pagination
+        assert "has_next" in pagination
+        assert isinstance(pagination["total_count"], int)
         
         # Should have found instances (this template has many)
         if "error" not in result:
-            assert result["total_count"] > 0
+            assert pagination["total_count"] > 0
     
     def test_search_instances_invalid_api_key(self):
         """Test search with invalid API key."""
-        result = search_instance_ids("8b47bae6-db32-4b13-9d12-d012f0be9412", "invalid-key", limit_per_call=2)
+        result = search_instance_ids("8b47bae6-db32-4b13-9d12-d012f0be9412", "invalid-key", limit=2)
         assert "error" in result
 
 

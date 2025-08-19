@@ -52,18 +52,26 @@ def get_children_from_branch(branch_iri: str, ontology_acronym: str, bioportal_a
         return {"error": f"Failed to parse BioPortal response: {str(e)}"}
 
 
-def search_instance_ids(template_id: str, cedar_api_key: str, limit_per_call: int = 100) -> Dict[str, Any]:
+def search_instance_ids(
+    template_id: str, 
+    cedar_api_key: str, 
+    limit: int = 10, 
+    offset: int = 0
+) -> Dict[str, Any]:
     """
-    Search for template instances based on a template ID.
+    Search for template instances with pagination support.
     
     Args:
         template_id: Template ID (UUID or full URL)
         cedar_api_key: CEDAR API key for authentication
-        limit_per_call: Number of instances to fetch per API call (default: 100)
+        limit: Number of instances to fetch
+        offset: Starting position
         
     Returns:
-        Dictionary containing all instance IDs or error information
-        Format: {"instance_ids": [list of @id values], "total_count": int} or {"error": str}
+        Dictionary containing:
+        - instance_ids: List of instance IDs for this page
+        - pagination: Pagination metadata
+        - error: Error message if failed
     """
     try:
         # Convert template ID to full URL format if needed
@@ -72,65 +80,53 @@ def search_instance_ids(template_id: str, cedar_api_key: str, limit_per_call: in
         else:
             template_url = template_id
         
-        # Set authorization header
         headers = {
             'Accept': 'application/json',
             'Authorization': f'apiKey {cedar_api_key}'
         }
         
-        # Start with first page
-        all_instance_ids = []
-        offset = 0
-        total_count = 0
+        # Build the search API URL
+        base_url = "https://resource.metadatacenter.org/search"
+        params = {
+            'version': 'latest',
+            'limit': limit,
+            'is_based_on': template_url,
+            'offset': offset
+        }
         
-        while True:
-            # Build the search API URL
-            base_url = "https://resource.metadatacenter.org/search"
-            params = {
-                'version': 'latest',
-                'limit': limit_per_call,
-                'is_based_on': template_url,
-                'offset': offset
-            }
-            
-            # Make the API request with timeout
-            response = requests.get(base_url, headers=headers, params=params, timeout=30)
-            response.raise_for_status()
-            search_data = response.json()
-            
-            # Extract total count from first response
-            if offset == 0:
-                total_count = search_data.get('totalCount', 0)
-                
-                # If no instances found, return empty result
-                if total_count == 0:
-                    return {"instance_ids": [], "total_count": 0}
-            
-            # Extract instance IDs from current page
-            resources = search_data.get('resources', [])
-            for resource in resources:
-                instance_id = resource.get('@id')
-                if instance_id:
-                    all_instance_ids.append(instance_id)
-            
-            # Check if there's a next page
-            paging = search_data.get('paging', {})
-            next_page = paging.get('next')
-            
-            # If no next page, we're done
-            if not next_page:
-                break
-            
-            # Move to next page
-            offset += limit_per_call
-            
-            # Safety check to prevent infinite loops
-            if len(all_instance_ids) >= total_count:
-                break
+        # Make the API request
+        response = requests.get(base_url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        search_data = response.json()
+        
+        # Extract information
+        total_count = search_data.get('totalCount', 0)
+        resources = search_data.get('resources', [])
+        
+        # Extract instance IDs from current page
+        instance_ids = []
+        for resource in resources:
+            instance_id = resource.get('@id')
+            if instance_id:
+                instance_ids.append(instance_id)
+        
+        # Calculate pagination metadata
+        current_page = (offset // limit) + 1
+        total_pages = (total_count + limit - 1) // limit if limit > 0 else 0  # Ceiling division
+        has_next = offset + limit < total_count
+        
+        pagination_metadata = {
+            "limit": limit,
+            "offset": offset,
+            "total_count": total_count,
+            "current_page": current_page,
+            "total_pages": total_pages,
+            "has_next": has_next,
+        }
         
         return {
-            "instance_ids": all_instance_ids,
-            "total_count": total_count
+            "instance_ids": instance_ids,
+            "pagination": pagination_metadata
         }
         
     except requests.exceptions.RequestException as e:

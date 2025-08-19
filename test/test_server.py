@@ -337,7 +337,7 @@ class TestGetInstancesBasedOnTemplate:
         template_id = "8b47bae6-db32-4b13-9d12-d012f0be9412"
         
         # Step 1: Search for instances
-        search_result = search_instance_ids(template_id, cedar_api_key, limit_per_call=3)
+        search_result = search_instance_ids(template_id, cedar_api_key, limit=3)
         
         if "error" in search_result:
             pytest.skip(f"Search failed: {search_result['error']}")

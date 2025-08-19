@@ -3,7 +3,7 @@
 import argparse
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict
 from urllib.parse import quote
 
 import requests
@@ -84,35 +84,72 @@ def main():
         return template_data
 
     @mcp.tool()
-    def get_instances_based_on_template(template_id: str) -> List[Dict[str, Any]]:
+    def get_instances_based_on_template(
+        template_id: str,
+        limit: int = 10,
+        offset: int = 0
+    ) -> Dict[str, Any]:
         """
-        Get all template instances based on a CEDAR template ID.
+        Get template instances that belong to the input template ID with pagination support.
         
-        This tool searches for all instances of a given template and fetches their complete content.
+        This tool searches for instances of a given template and fetches their complete content
+        in paginated chunks to avoid token limit issues.
         
         Args:
             template_id: The template ID or full URL from CEDAR repository
                         (e.g., "https://repo.metadatacenter.org/templates/e019284e-48d1-4494-bc83-ddefd28dfbac")
-        
+            limit: Number of instances to return per page (min: 1, max: 100, default: 10)
+            offset: Starting position for pagination (default: 0)
+            
         Returns:
-            List of dictionaries containing the full JSON content of each template instance.
-            Returns empty list if no instances found.
-            Returns error dictionary if search or fetching fails.
+            Dictionary containing:
+            - instances: List of template instances for this page
+            - pagination: Pagination metadata (total_count, current_page, etc.)
+            - errors: List of any errors encountered during fetching
         """
-        # Step 1: Search for all instance IDs given a template ID
-        search_result = search_instance_ids(template_id, CEDAR_API_KEY)
+        # Validate pagination parameters
+        if limit < 1 or limit > 100:
+            return {
+                "error": "Invalid limit parameter. Must be between 1 and 100.",
+                "instances": [],
+                "pagination": None
+            }
+        
+        if offset < 0:
+            return {
+                "error": "Invalid offset parameter. Must be 0 or greater.",
+                "instances": [],
+                "pagination": None
+            }
+        
+        # Step 1: Search for instance IDs with pagination
+        search_result = search_instance_ids(
+            template_id=template_id,
+            cedar_api_key=CEDAR_API_KEY,
+            limit=limit,
+            offset=offset
+        )
         
         # Check if search failed
         if "error" in search_result:
-            return [{"error": f"Failed to search for template instances: {search_result['error']}"}]
+            return {
+                "error": f"Failed to search for template instances: {search_result['error']}",
+                "instances": [],
+                "pagination": None
+            }
         
         instance_ids = search_result.get("instance_ids", [])
+        pagination_metadata = search_result.get("pagination", {})
         
-        # If no instances found, return empty list
+        # If no instances found, return empty result with pagination metadata
         if not instance_ids:
-            return []
+            return {
+                "instances": [],
+                "pagination": pagination_metadata,
+                "errors": None
+            }
         
-        # Step 2: Fetch content for each instance
+        # Step 2: Fetch content for each instance in this page
         instances = []
         failed_instances = []
         
@@ -127,19 +164,26 @@ def main():
                 })
             else:
                 # Clean the instance content before adding to results
-                cleaned_instance = clean_template_instance_response(instance_content)
-                instances.append(cleaned_instance)
+                try:
+                    cleaned_instance = clean_template_instance_response(instance_content)
+                    instances.append(cleaned_instance)
+                except Exception as e:
+                    failed_instances.append({
+                        "instance_id": instance_id,
+                        "error": f"Failed to clean instance response: {str(e)}"
+                    })
         
-        # Step 3: Return results with error summary if needed
-        if failed_instances and not instances:
-            # Complete failure: return error
-            return [{
-                "error": f"Failed to fetch any instance content. Found {len(instance_ids)} instance IDs but could not fetch any content.",
-                "failure_details": failed_instances[:10]  # Show first 10 failures
-            }]
-        else:
-            # Complete success: return all instances
-            return instances
+        # Step 3: Prepare response
+        response = {
+            "instances": instances,
+            "pagination": pagination_metadata
+        }
+        
+        # Include error information if any instances failed to fetch
+        if failed_instances:
+            response["errors"] = failed_instances
+        
+        return response
 
     # Start the MCP server
     print(f"Starting CEDAR MCP server...")
