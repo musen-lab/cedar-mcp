@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
 import pytest
-from typing import Dict, Any
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import requests
-from src.cedar_mcp.server import main
 from src.cedar_mcp.external_api import search_instance_ids, get_instance
 import sys
 import io
@@ -19,12 +17,11 @@ class TestGetTemplate:
         """Test fetching a valid template from CEDAR."""
         # We need to test the actual MCP tool function
         # Since it's defined inside main(), we'll test by importing and running
-        from src.cedar_mcp.server import main
         
         # Mock sys.argv to provide API keys
         with patch.object(sys, 'argv', ['server.py', '--cedar-api-key', cedar_api_key]):
             # Capture stdout to prevent MCP server from running
-            captured_output = io.StringIO()
+            io.StringIO()
             
             # We'll test the function logic by extracting it
             # Since the function is defined inside main(), we need to test indirectly
@@ -53,7 +50,6 @@ class TestGetTemplate:
                 bioportal_api_key = os.getenv("BIOPORTAL_API_KEY")
                 
                 cleaned_data = clean_template_response(template_data, bioportal_api_key)
-                breakpoint()
                 # Verify cleaned response structure
                 assert isinstance(cleaned_data, dict)
                 assert cleaned_data["type"] == "template"
@@ -97,12 +93,8 @@ class TestGetTemplate:
         # Should get 401 Unauthorized
         assert response.status_code == 401
 
-    def test_cedar_api_endpoint_structure(self, cedar_api_key: str):
+    def test_cedar_api_endpoint_structure(self):
         """Test CEDAR API endpoint URL structure and parameters."""
-        headers = {
-            "Accept": "application/json",
-            "Authorization": f"apiKey {cedar_api_key}"
-        }
         
         # Test URL encoding works correctly
         test_template_id = "https://repo.metadatacenter.org/templates/test-id-with-special-chars!"
