@@ -12,7 +12,7 @@ jobs:
     name: Code Quality
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -42,7 +42,7 @@ jobs:
     name: Test Python ${{ matrix.python-version }}
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -83,7 +83,7 @@ jobs:
     name: Build Package
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -113,7 +113,7 @@ jobs:
     name: Security Scan
     
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     
     - name: Set up Python
       uses: actions/setup-python@v5
