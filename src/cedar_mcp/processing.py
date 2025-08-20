@@ -83,7 +83,7 @@ def _extract_controlled_term_values(field_data: Dict[str, Any], bioportal_api_ke
     
     # Handle literals (no IRIs needed)
     if literals:
-        return [ControlledTermValue(label=literal['label']) 
+        return [ControlledTermValue(label=literal['label'], iri=None) 
                 for literal in literals 
                 if isinstance(literal, dict) and 'label' in literal]
     else: 
