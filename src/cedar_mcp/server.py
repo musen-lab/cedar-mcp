@@ -186,7 +186,7 @@ def main():
         return response
 
     # Start the MCP server
-    print(f"Starting CEDAR MCP server...")
+    print("Starting CEDAR MCP server...")
     mcp.run()
 
 
