@@ -48,6 +48,7 @@ Thumbs.db
 .env.production
 .claude
 .obsidian
+.serena
 
 # Test artifacts
 .pytest_cache/
