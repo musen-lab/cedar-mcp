@@ -135,6 +135,7 @@ class TestGetChildrenFromBranch:
             assert "error" in result or "collection" in result
 
 
+@pytest.mark.unit
 class TestSearchInstanceIds:
     """Tests for search_instance_ids function."""
     
@@ -170,6 +171,7 @@ class TestSearchInstanceIds:
         assert "error" in result
 
 
+@pytest.mark.unit
 class TestGetInstance:
     """Tests for get_instance function."""
     

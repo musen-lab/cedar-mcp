@@ -17,6 +17,7 @@ from src.cedar_mcp.model import (
 )
 
 
+@pytest.mark.unit
 class TestDetermineDatatype:
     """Tests for _determine_datatype function."""
 
@@ -141,6 +142,7 @@ class TestExtractControlledTermValues:
             assert "Test Class" in class_labels
 
 
+@pytest.mark.unit
 class TestExtractDefaultValue:
     """Tests for _extract_default_value function."""
 
@@ -319,6 +321,7 @@ class TestCleanTemplateResponse:
 
 
 
+@pytest.mark.unit
 class TestCleanTemplateInstanceResponse:
     """Tests for clean_template_instance_response function - core transformations."""
     

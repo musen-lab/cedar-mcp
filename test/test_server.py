@@ -164,6 +164,7 @@ class TestGetTemplate:
         assert auth_header.split(" ")[1] == cedar_api_key
 
 
+@pytest.mark.unit
 class TestServerConfiguration:
     """Tests for server configuration and setup."""
 
