@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict
+from typing import Any, Dict, cast
 from urllib.parse import quote
 import requests
 
@@ -95,7 +95,7 @@ def search_instance_ids(
         }
         
         # Make the API request
-        response = requests.get(base_url, headers=headers, params=params, timeout=30)
+        response = requests.get(base_url, headers=headers, params=cast(Any, params), timeout=30)
         response.raise_for_status()
         search_data = response.json()
         
