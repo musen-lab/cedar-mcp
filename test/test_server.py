@@ -245,22 +245,25 @@ class TestServerEnvironment:
         """Test that environment variables are loaded correctly."""
         import os
         from pathlib import Path
-        
+
         # First check if environment variables are already set (CI context)
         cedar_key = os.getenv("CEDAR_API_KEY")
         bioportal_key = os.getenv("BIOPORTAL_API_KEY")
-        
+
         # If not set, try to load from .env.test (local development)
         if not cedar_key or not bioportal_key:
             env_file = Path(".env.test")
             if env_file.exists():
                 from dotenv import load_dotenv
+
                 load_dotenv(".env.test")
                 cedar_key = os.getenv("CEDAR_API_KEY")
                 bioportal_key = os.getenv("BIOPORTAL_API_KEY")
             else:
-                pytest.skip("Neither environment variables nor .env.test file available")
-        
+                pytest.skip(
+                    "Neither environment variables nor .env.test file available"
+                )
+
         assert cedar_key is not None, "CEDAR_API_KEY not found"
         assert bioportal_key is not None, "BIOPORTAL_API_KEY not found"
         assert len(cedar_key) > 0, "CEDAR_API_KEY is empty"
