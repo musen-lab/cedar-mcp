@@ -192,22 +192,6 @@ class TestGetTemplate:
 class TestServerConfiguration:
     """Tests for server configuration and setup."""
 
-    @pytest.mark.integration
-
-    def test_environment_variable_loading(self):
-        """Test that environment variables are loaded correctly."""
-        from dotenv import load_dotenv
-
-        load_dotenv(".env.test")
-
-        cedar_key = os.getenv("CEDAR_API_KEY")
-        bioportal_key = os.getenv("BIOPORTAL_API_KEY")
-
-        assert cedar_key is not None
-        assert bioportal_key is not None
-        assert len(cedar_key) > 0
-        assert len(bioportal_key) > 0
-
     def test_command_line_argument_parsing(self):
         """Test command line argument parsing."""
         import argparse
@@ -251,6 +235,36 @@ class TestServerConfiguration:
         env_key = None
         result_key = command_line_key or env_key
         assert result_key is None
+
+
+@pytest.mark.integration
+class TestServerEnvironment:
+    """Integration tests for server environment setup."""
+
+    def test_environment_variable_loading(self):
+        """Test that environment variables are loaded correctly."""
+        import os
+        from pathlib import Path
+        
+        # First check if environment variables are already set (CI context)
+        cedar_key = os.getenv("CEDAR_API_KEY")
+        bioportal_key = os.getenv("BIOPORTAL_API_KEY")
+        
+        # If not set, try to load from .env.test (local development)
+        if not cedar_key or not bioportal_key:
+            env_file = Path(".env.test")
+            if env_file.exists():
+                from dotenv import load_dotenv
+                load_dotenv(".env.test")
+                cedar_key = os.getenv("CEDAR_API_KEY")
+                bioportal_key = os.getenv("BIOPORTAL_API_KEY")
+            else:
+                pytest.skip("Neither environment variables nor .env.test file available")
+        
+        assert cedar_key is not None, "CEDAR_API_KEY not found"
+        assert bioportal_key is not None, "BIOPORTAL_API_KEY not found"
+        assert len(cedar_key) > 0, "CEDAR_API_KEY is empty"
+        assert len(bioportal_key) > 0, "BIOPORTAL_API_KEY is empty"
 
 
 @pytest.mark.integration
