@@ -600,3 +600,205 @@ class TestCleanTemplateInstanceResponse:
         assert (
             cleaned["Funder Information"][0]["Funder GRID reference"] == "grid.438427.e"
         )
+
+    def test_value_type_conversion(self):
+        """Test that @value objects with @type are properly converted to appropriate types."""
+        sample_instance = {
+            # String values (should remain as string)
+            "End date": {
+                "@value": "2022-08-31",
+                "@type": "xsd:date"
+            },
+            "Project Title": {
+                "@value": "Test Project Title",
+                "@type": "xsd:string"
+            },
+            "Description": {
+                "@value": "This is a description",
+                "@type": "xsd:string"
+            },
+            
+            # Numeric values (should be converted to numbers)
+            "Project duration": {
+                "@value": "24",
+                "@type": "xsd:decimal"
+            },
+            "Budget amount": {
+                "@value": "100000.50",
+                "@type": "xsd:float"
+            },
+            "Participant count": {
+                "@value": "42",
+                "@type": "xsd:integer"
+            },
+            "Priority level": {
+                "@value": "5",
+                "@type": "xsd:int"
+            },
+            "Max participants": {
+                "@value": "1000",
+                "@type": "xsd:long"
+            },
+            "Weight": {
+                "@value": "98.76",
+                "@type": "xsd:double"
+            },
+            
+            # Boolean values
+            "Is active": {
+                "@value": "true",
+                "@type": "xsd:boolean"
+            },
+            "Is completed": {
+                "@value": "false",
+                "@type": "xsd:boolean"
+            },
+            "Has funding": {
+                "@value": "1",
+                "@type": "xsd:boolean"
+            },
+            "Is public": {
+                "@value": "0",
+                "@type": "xsd:boolean"
+            },
+            
+            # Single @value (no @type) should remain as-is
+            "Simple field": {
+                "@value": "simple value"
+            },
+            
+            # Array with mixed types
+            "Mixed values": [
+                {
+                    "@value": "123",
+                    "@type": "xsd:integer"
+                },
+                {
+                    "@value": "test string",
+                    "@type": "xsd:string"
+                },
+                {
+                    "@value": "true",
+                    "@type": "xsd:boolean"
+                }
+            ]
+        }
+
+        cleaned = clean_template_instance_response(sample_instance)
+
+        # Verify string types remain as strings
+        assert cleaned["End date"] == "2022-08-31"
+        assert isinstance(cleaned["End date"], str)
+        
+        assert cleaned["Project Title"] == "Test Project Title"
+        assert isinstance(cleaned["Project Title"], str)
+        
+        assert cleaned["Description"] == "This is a description"
+        assert isinstance(cleaned["Description"], str)
+
+        # Verify numeric type conversions
+        assert cleaned["Project duration"] == 24.0
+        assert isinstance(cleaned["Project duration"], float)
+        
+        assert cleaned["Budget amount"] == 100000.50
+        assert isinstance(cleaned["Budget amount"], float)
+        
+        assert cleaned["Participant count"] == 42
+        assert isinstance(cleaned["Participant count"], int)
+        
+        assert cleaned["Priority level"] == 5
+        assert isinstance(cleaned["Priority level"], int)
+        
+        assert cleaned["Max participants"] == 1000
+        assert isinstance(cleaned["Max participants"], int)
+        
+        assert cleaned["Weight"] == 98.76
+        assert isinstance(cleaned["Weight"], float)
+
+        # Verify boolean type conversions
+        assert cleaned["Is active"] is True
+        assert isinstance(cleaned["Is active"], bool)
+        
+        assert cleaned["Is completed"] is False
+        assert isinstance(cleaned["Is completed"], bool)
+        
+        assert cleaned["Has funding"] is True
+        assert isinstance(cleaned["Has funding"], bool)
+        
+        assert cleaned["Is public"] is False
+        assert isinstance(cleaned["Is public"], bool)
+
+        # Verify single @value without @type
+        assert cleaned["Simple field"] == "simple value"
+        assert isinstance(cleaned["Simple field"], str)
+
+        # Verify array with mixed types
+        assert cleaned["Mixed values"] == [123, "test string", True]
+        assert isinstance(cleaned["Mixed values"][0], int)
+        assert isinstance(cleaned["Mixed values"][1], str)
+        assert isinstance(cleaned["Mixed values"][2], bool)
+
+    def test_value_type_conversion_edge_cases(self):
+        """Test edge cases for @value and @type conversion."""
+        sample_instance = {
+            # Invalid numeric values should fall back to original string
+            "Invalid decimal": {
+                "@value": "not-a-number",
+                "@type": "xsd:decimal"
+            },
+            "Invalid integer": {
+                "@value": "abc123",
+                "@type": "xsd:integer"
+            },
+            
+            # Boolean edge cases
+            "Boolean uppercase": {
+                "@value": "TRUE",
+                "@type": "xsd:boolean"
+            },
+            "Boolean mixed case": {
+                "@value": "False",
+                "@type": "xsd:boolean"
+            },
+            
+            # Objects with more than @value and @type should be processed normally
+            "Complex object": {
+                "@value": "some value",
+                "@type": "xsd:string",
+                "@id": "http://example.org/resource",
+                "rdfs:label": "Some Label"
+            },
+            
+            # Unknown XSD types should return value as-is
+            "Unknown type": {
+                "@value": "custom value",
+                "@type": "custom:unknownType"
+            }
+        }
+
+        cleaned = clean_template_instance_response(sample_instance)
+
+        # Invalid numeric conversions should fall back to original string
+        assert cleaned["Invalid decimal"] == "not-a-number"
+        assert isinstance(cleaned["Invalid decimal"], str)
+        
+        assert cleaned["Invalid integer"] == "abc123"
+        assert isinstance(cleaned["Invalid integer"], str)
+
+        # Boolean case insensitive
+        assert cleaned["Boolean uppercase"] is True
+        assert isinstance(cleaned["Boolean uppercase"], bool)
+        
+        assert cleaned["Boolean mixed case"] is False
+        assert isinstance(cleaned["Boolean mixed case"], bool)
+
+        # Complex objects should not be flattened - should keep all transformed fields
+        complex_obj = cleaned["Complex object"]
+        assert "@value" not in complex_obj
+        assert "@type" not in complex_obj
+        assert complex_obj["iri"] == "http://example.org/resource"
+        assert complex_obj["label"] == "Some Label"
+
+        # Unknown types should return value as string
+        assert cleaned["Unknown type"] == "custom value"
+        assert isinstance(cleaned["Unknown type"], str)

@@ -417,9 +417,9 @@ class TestEndToEndWorkflow:
 
             check_nested_structure(cleaned_instance)
 
-            # Step 5: Verify @value flattening (only when @value is the sole key)
-            def check_value_flattening(obj, path=""):
-                """Recursively check that single @value objects are properly flattened."""
+            # Step 5: Verify @value flattening and type conversion
+            def check_value_flattening_and_type_conversion(obj, path=""):
+                """Recursively check that @value objects are properly flattened and type-converted."""
                 if isinstance(obj, dict):
                     # Check for single-key @value objects (these should be flattened)
                     if len(obj) == 1 and "@value" in obj:
@@ -428,23 +428,41 @@ class TestEndToEndWorkflow:
                             f"Single @value object found at path: {path} (should be flattened)"
                         )
 
-                    # Objects with @value and other keys (like @type) should be preserved
-                    # This is the correct behavior
+                    # Check that @value and @type objects are properly converted
+                    if "@value" in obj or "@type" in obj:
+                        assert False, f"@value or @type found at path: {path} (should be converted)"
 
                     # Recursively check nested objects
                     for key, value in obj.items():
-                        check_value_flattening(value, f"{path}.{key}" if path else key)
+                        check_value_flattening_and_type_conversion(value, f"{path}.{key}" if path else key)
 
                 elif isinstance(obj, list):
                     # Recursively check list items
                     for i, item in enumerate(obj):
-                        check_value_flattening(
+                        check_value_flattening_and_type_conversion(
                             item, f"{path}[{i}]" if path else f"[{i}]"
                         )
 
-            check_value_flattening(cleaned_instance)
+            check_value_flattening_and_type_conversion(cleaned_instance)
 
-            # Step 6: Verify data integrity - check that important data fields are preserved
+            # Step 6: Verify specific type conversions from real CEDAR data
+            # Based on the known sample template instance data
+            if "Project duration" in cleaned_instance:
+                # Should be converted to numeric
+                assert isinstance(cleaned_instance["Project duration"], (int, float))
+                print(f"Project duration: {cleaned_instance['Project duration']} (type: {type(cleaned_instance['Project duration'])})")
+
+            if "Start date" in cleaned_instance:
+                # Should remain as string (xsd:date)
+                assert isinstance(cleaned_instance["Start date"], str)
+                print(f"Start date: {cleaned_instance['Start date']} (type: {type(cleaned_instance['Start date'])})")
+
+            if "End date" in cleaned_instance:
+                # Should remain as string (xsd:date)
+                assert isinstance(cleaned_instance["End date"], str)
+                print(f"End date: {cleaned_instance['End date']} (type: {type(cleaned_instance['End date'])})")
+
+            # Step 7: Verify data integrity - check that important data fields are preserved
             # (This varies by template instance, but we can check for non-empty structure)
             assert len(cleaned_instance) > 0, "Cleaned instance should not be empty"
 

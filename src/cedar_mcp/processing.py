@@ -353,15 +353,51 @@ def _transform_jsonld_structure(obj: Any) -> Any:
         Transformed object with simplified structure
     """
     if isinstance(obj, dict):
-        # Handle @value flattening first
-        if "@value" in obj and len(obj) == 1:
-            return obj["@value"]
+        # Handle @value flattening with type conversion
+        if "@value" in obj:
+            value = obj["@value"]
+            
+            # If only @value is present, return the value as-is
+            if len(obj) == 1:
+                return value
+            
+            # If @type is present along with @value, convert based on type
+            if "@type" in obj and len(obj) == 2:
+                xsd_type = obj["@type"]
+                
+                # Handle numeric types
+                if xsd_type in {"xsd:decimal", "xsd:float", "xsd:double"}:
+                    try:
+                        return float(value)
+                    except (ValueError, TypeError):
+                        return value  # Return original if conversion fails
+                        
+                elif xsd_type in {"xsd:int", "xsd:integer", "xsd:long", "xsd:short", "xsd:byte"}:
+                    try:
+                        return int(value)
+                    except (ValueError, TypeError):
+                        return value  # Return original if conversion fails
+                        
+                elif xsd_type in {"xsd:boolean"}:
+                    if isinstance(value, str):
+                        return value.lower() in {"true", "1"}
+                    else:
+                        return bool(value)
+                        
+                else:
+                    # For string types (xsd:string, xsd:date, xsd:dateTime, etc.) or unknown types,
+                    # return as string
+                    return value
 
         # Transform dictionary
         transformed = {}
         for key, value in obj.items():
             # Skip @context fields in nested objects
             if key == "@context":
+                continue
+                
+            # Skip @type and @value if they were already processed above
+            if key in {"@type", "@value"} and "@value" in obj:
                 continue
 
             # Handle @id fields - remove if they contain template-element-instances
