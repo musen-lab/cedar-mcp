@@ -309,7 +309,7 @@ def clean_template_instance_response(instance_data: Dict[str, Any]) -> Dict[str,
 
     Removes metadata fields and transforms JSON-LD specific attributes:
     - Removes: '@context', 'schema:isBasedOn', 'schema:name', 'schema:description',
-               'pav:createdOn', 'pav:createdBy', 'oslc:modifiedBy', '@id' from root
+               'pav:createdOn', 'pav:createdBy', 'pav:derivedFrom', 'oslc:modifiedBy', '@id' from root
     - Transforms: '@id' → 'iri', 'rdfs:label' → 'label' throughout
     - Flattens: '@value' objects to their direct values
 
@@ -327,6 +327,7 @@ def clean_template_instance_response(instance_data: Dict[str, Any]) -> Dict[str,
         "schema:description",
         "pav:createdOn",
         "pav:createdBy",
+        "pav:derivedFrom",
         "oslc:modifiedBy",
         "@id",
     }

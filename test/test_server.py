@@ -365,6 +365,7 @@ class TestEndToEndWorkflow:
                 "schema:description",
                 "pav:createdOn",
                 "pav:createdBy",
+                "pav:derivedFrom",
                 "oslc:modifiedBy",
                 "@id",
             }

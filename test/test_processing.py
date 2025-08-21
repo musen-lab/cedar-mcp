@@ -354,7 +354,12 @@ class TestCleanTemplateInstanceResponse:
             "@id": "https://repo.metadatacenter.org/template-instances/test-id",
             "schema:isBasedOn": "https://repo.metadatacenter.org/templates/test-template",
             "schema:name": "Test Instance",
+            "schema:description": "A test instance for unit testing",
             "pav:createdOn": "2021-11-18T10:40:02-08:00",
+            "pav:createdBy": "https://metadatacenter.org/users/test-user",
+            "pav:derivedFrom": "https://repo.metadatacenter.org/template-instances/parent-instance",
+            "pav:lastUpdatedOn": "2021-11-18T11:40:02-08:00",
+            "oslc:modifiedBy": "https://metadatacenter.org/users/test-user",
             "cell_type": {
                 "@id": "http://purl.obolibrary.org/obo/CL_1000412",
                 "rdfs:label": "endothelial cell",
@@ -373,11 +378,18 @@ class TestCleanTemplateInstanceResponse:
             "@context",
             "schema:isBasedOn",
             "schema:name",
+            "schema:description",
             "pav:createdOn",
+            "pav:createdBy", 
+            "pav:derivedFrom",
+            "oslc:modifiedBy",
             "@id",
         }
         for field in metadata_fields:
             assert field not in cleaned
+
+        # Verify fields that should be preserved (not metadata)
+        assert "pav:lastUpdatedOn" in cleaned  # This should be preserved as it's not in metadata_fields
 
         # Verify @id → iri transformation
         assert (
