@@ -129,6 +129,7 @@ def sample_minimal_template_data() -> Dict[str, Any]:
         },
     }
 
+
 @pytest.fixture
 def sample_nested_template_element() -> Dict[str, Any]:
     """Sample template element with nested fields for testing."""
@@ -142,12 +143,12 @@ def sample_nested_template_element() -> Dict[str, Any]:
             "order": ["Resource Type Category", "Resource Type Detail"],
             "propertyLabels": {
                 "Resource Type Category": "Resource Type Category",
-                "Resource Type Detail": "Resource Type Detail"
+                "Resource Type Detail": "Resource Type Detail",
             },
             "propertyDescriptions": {
                 "Resource Type Category": "Categorical type of the resource being described.",
-                "Resource Type Detail": "Brief free-text characterization of the type details."
-            }
+                "Resource Type Detail": "Brief free-text characterization of the type details.",
+            },
         },
         "properties": {
             "Resource Type Category": {
@@ -155,16 +156,16 @@ def sample_nested_template_element() -> Dict[str, Any]:
                 "schema:name": "Resource Type Category",
                 "schema:description": "Categorical type of the resource being described.",
                 "skos:prefLabel": "Resource Type Category",
-                "_valueConstraints": {"requiredValue": False}
+                "_valueConstraints": {"requiredValue": False},
             },
             "Resource Type Detail": {
                 "@type": "https://schema.metadatacenter.org/core/TemplateField",
                 "schema:name": "Resource Type Detail",
                 "schema:description": "Brief free-text characterization of the type details.",
                 "skos:prefLabel": "Resource Type Detail",
-                "_valueConstraints": {"requiredValue": False}
-            }
-        }
+                "_valueConstraints": {"requiredValue": False},
+            },
+        },
     }
 
 
@@ -183,12 +184,12 @@ def sample_array_template_element() -> Dict[str, Any]:
                 "order": ["Data File Title", "Title Language"],
                 "propertyLabels": {
                     "Data File Title": "Data File Title",
-                    "Title Language": "Title Language"
+                    "Title Language": "Title Language",
                 },
                 "propertyDescriptions": {
                     "Data File Title": "A name or title by which the Data File being described is known.",
-                    "Title Language": "Language in which the Data File title is provided."
-                }
+                    "Title Language": "Language in which the Data File title is provided.",
+                },
             },
             "properties": {
                 "Data File Title": {
@@ -196,17 +197,17 @@ def sample_array_template_element() -> Dict[str, Any]:
                     "schema:name": "Data File Title",
                     "schema:description": "A name or title by which the Data File being described is known.",
                     "skos:prefLabel": "Data File Title",
-                    "_valueConstraints": {"requiredValue": True}
+                    "_valueConstraints": {"requiredValue": True},
                 },
                 "Title Language": {
                     "@type": "https://schema.metadatacenter.org/core/TemplateField",
                     "schema:name": "Title Language",
                     "schema:description": "Language in which the Data File title is provided.",
                     "skos:prefLabel": "Title Language",
-                    "_valueConstraints": {"requiredValue": False}
-                }
-            }
-        }
+                    "_valueConstraints": {"requiredValue": False},
+                },
+            },
+        },
     }
 
 
@@ -221,8 +222,8 @@ def sample_array_template_field() -> Dict[str, Any]:
             "schema:name": "Notes",
             "schema:description": "Additional notes or comments about the resource.",
             "skos:prefLabel": "Notes",
-            "_valueConstraints": {"requiredValue": False}
-        }
+            "_valueConstraints": {"requiredValue": False},
+        },
     }
 
 
@@ -232,16 +233,14 @@ def sample_template_with_array_field() -> Dict[str, Any]:
     return {
         "schema:name": "Template with Array Field",
         "title": "Template with Array Field Schema",
-        "_ui": {
-            "order": ["Simple Field", "Notes Array"]
-        },
+        "_ui": {"order": ["Simple Field", "Notes Array"]},
         "properties": {
             "Simple Field": {
                 "@type": "https://schema.metadatacenter.org/core/TemplateField",
                 "schema:name": "Simple Field",
                 "schema:description": "A simple field for testing",
                 "skos:prefLabel": "Simple Field",
-                "_valueConstraints": {"requiredValue": False}
+                "_valueConstraints": {"requiredValue": False},
             },
             "Notes Array": {
                 "type": "array",
@@ -251,10 +250,10 @@ def sample_template_with_array_field() -> Dict[str, Any]:
                     "schema:name": "Notes",
                     "schema:description": "Additional notes or comments about the resource.",
                     "skos:prefLabel": "Notes",
-                    "_valueConstraints": {"requiredValue": False}
-                }
-            }
-        }
+                    "_valueConstraints": {"requiredValue": False},
+                },
+            },
+        },
     }
 
 
@@ -265,7 +264,12 @@ def sample_complex_nested_template() -> Dict[str, Any]:
         "schema:name": "Complex Nested Template",
         "title": "Complex Nested Template Schema",
         "_ui": {
-            "order": ["Simple Field", "Resource Type", "Data File Title", "Data File Spatial Coverage"]
+            "order": [
+                "Simple Field",
+                "Resource Type",
+                "Data File Title",
+                "Data File Spatial Coverage",
+            ]
         },
         "properties": {
             "Simple Field": {
@@ -273,7 +277,7 @@ def sample_complex_nested_template() -> Dict[str, Any]:
                 "schema:name": "Simple Field",
                 "schema:description": "A simple field for testing",
                 "skos:prefLabel": "Simple Field",
-                "_valueConstraints": {"requiredValue": False}
+                "_valueConstraints": {"requiredValue": False},
             },
             "Resource Type": {
                 "@type": "https://schema.metadatacenter.org/core/TemplateElement",
@@ -290,16 +294,16 @@ def sample_complex_nested_template() -> Dict[str, Any]:
                         "schema:name": "Resource Type Category",
                         "schema:description": "Categorical type of the resource.",
                         "skos:prefLabel": "Resource Type Category",
-                        "_valueConstraints": {"requiredValue": False}
+                        "_valueConstraints": {"requiredValue": False},
                     },
                     "Resource Type Detail": {
                         "@type": "https://schema.metadatacenter.org/core/TemplateField",
                         "schema:name": "Resource Type Detail",
                         "schema:description": "Type details for the resource.",
                         "skos:prefLabel": "Resource Type Detail",
-                        "_valueConstraints": {"requiredValue": False}
-                    }
-                }
+                        "_valueConstraints": {"requiredValue": False},
+                    },
+                },
             },
             "Data File Title": {
                 "type": "array",
@@ -318,17 +322,17 @@ def sample_complex_nested_template() -> Dict[str, Any]:
                             "schema:name": "Title Text",
                             "schema:description": "The actual title text.",
                             "skos:prefLabel": "Title Text",
-                            "_valueConstraints": {"requiredValue": True}
+                            "_valueConstraints": {"requiredValue": True},
                         },
                         "Title Language": {
                             "@type": "https://schema.metadatacenter.org/core/TemplateField",
                             "schema:name": "Title Language",
                             "schema:description": "Language of the title.",
                             "skos:prefLabel": "Title Language",
-                            "_valueConstraints": {"requiredValue": False}
-                        }
-                    }
-                }
+                            "_valueConstraints": {"requiredValue": False},
+                        },
+                    },
+                },
             },
             "Data File Spatial Coverage": {
                 "type": "array",
@@ -347,14 +351,14 @@ def sample_complex_nested_template() -> Dict[str, Any]:
                             "schema:name": "Latitude",
                             "schema:description": "Latitude coordinate.",
                             "skos:prefLabel": "Latitude",
-                            "_valueConstraints": {"requiredValue": False}
+                            "_valueConstraints": {"requiredValue": False},
                         },
                         "Longitude": {
                             "@type": "https://schema.metadatacenter.org/core/TemplateField",
                             "schema:name": "Longitude",
                             "schema:description": "Longitude coordinate.",
                             "skos:prefLabel": "Longitude",
-                            "_valueConstraints": {"requiredValue": False}
+                            "_valueConstraints": {"requiredValue": False},
                         },
                         "Nested Coverage": {
                             "type": "array",
@@ -373,20 +377,20 @@ def sample_complex_nested_template() -> Dict[str, Any]:
                                         "schema:name": "Point Number",
                                         "schema:description": "Sequential point number.",
                                         "skos:prefLabel": "Point Number",
-                                        "_valueConstraints": {"requiredValue": False}
+                                        "_valueConstraints": {"requiredValue": False},
                                     },
                                     "Point Description": {
                                         "@type": "https://schema.metadatacenter.org/core/TemplateField",
                                         "schema:name": "Point Description",
                                         "schema:description": "Description of the point.",
                                         "skos:prefLabel": "Point Description",
-                                        "_valueConstraints": {"requiredValue": False}
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+                                        "_valueConstraints": {"requiredValue": False},
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
     }

@@ -360,7 +360,10 @@ class TestTransformElement:
 
         assert isinstance(result, ElementDefinition)
         assert result.name == "Resource Type"
-        assert result.description == "Information about the type of the resource being described with metadata."
+        assert (
+            result.description
+            == "Information about the type of the resource being described with metadata."
+        )
         assert result.prefLabel == "Resource Type"
         assert result.datatype == "element"
         assert result.is_array is False
@@ -408,7 +411,7 @@ class TestTransformElement:
                     "schema:name": "Simple Field",
                     "schema:description": "A simple field",
                     "skos:prefLabel": "Simple Field",
-                    "_valueConstraints": {"requiredValue": False}
+                    "_valueConstraints": {"requiredValue": False},
                 },
                 "nested_element": {
                     "@type": "https://schema.metadatacenter.org/core/TemplateElement",
@@ -417,9 +420,9 @@ class TestTransformElement:
                     "skos:prefLabel": "Nested Element",
                     "_valueConstraints": {"requiredValue": False},
                     "_ui": {"order": []},
-                    "properties": {}
-                }
-            }
+                    "properties": {},
+                },
+            },
         }
 
         result = _process_element_children(element_data, bioportal_api_key)
@@ -442,7 +445,7 @@ class TestCleanTemplateResponseNested:
         template_data = {
             "schema:name": "Template With Elements",
             "_ui": {"order": ["resource_type"]},
-            "properties": {"resource_type": sample_nested_template_element}
+            "properties": {"resource_type": sample_nested_template_element},
         }
 
         result = clean_template_response(template_data, bioportal_api_key)
@@ -469,7 +472,7 @@ class TestCleanTemplateResponseNested:
         template_data = {
             "schema:name": "Template With Arrays",
             "_ui": {"order": ["data_file_title"]},
-            "properties": {"data_file_title": sample_array_template_element}
+            "properties": {"data_file_title": sample_array_template_element},
         }
 
         result = clean_template_response(template_data, bioportal_api_key)
@@ -493,7 +496,9 @@ class TestCleanTemplateResponseNested:
         self, bioportal_api_key: str, sample_complex_nested_template: Dict[str, Any]
     ):
         """Test cleaning of complex template with multiple nesting levels."""
-        result = clean_template_response(sample_complex_nested_template, bioportal_api_key)
+        result = clean_template_response(
+            sample_complex_nested_template, bioportal_api_key
+        )
 
         assert result["type"] == "template"
         assert result["name"] == "Complex Nested Template"
@@ -526,7 +531,9 @@ class TestCleanTemplateResponseNested:
         assert len(spatial_coverage["children"]) == 3
 
         # Check that nested coverage is also an array element
-        nested_children_by_name = {child["name"]: child for child in spatial_coverage["children"]}
+        nested_children_by_name = {
+            child["name"]: child for child in spatial_coverage["children"]
+        }
         nested_coverage = nested_children_by_name["Nested Coverage"]
         assert nested_coverage["datatype"] == "element"
         assert nested_coverage["is_array"] is True
@@ -543,7 +550,7 @@ class TestCleanTemplateResponseNested:
                     "schema:name": "Simple Field",
                     "schema:description": "A simple field",
                     "skos:prefLabel": "Simple Field",
-                    "_valueConstraints": {"requiredValue": False}
+                    "_valueConstraints": {"requiredValue": False},
                 },
                 "complex_element": {
                     "@type": "https://schema.metadatacenter.org/core/TemplateElement",
@@ -558,17 +565,17 @@ class TestCleanTemplateResponseNested:
                             "schema:name": "Nested Field",
                             "schema:description": "A nested field",
                             "skos:prefLabel": "Nested Field",
-                            "_valueConstraints": {"requiredValue": True}
+                            "_valueConstraints": {"requiredValue": True},
                         }
-                    }
-                }
-            }
+                    },
+                },
+            },
         }
 
         result = clean_template_response(template_data, bioportal_api_key)
 
         assert len(result["children"]) == 2
-        
+
         # First child should be a simple field
         simple_child = result["children"][0]
         assert simple_child["name"] == "Simple Field"
@@ -593,7 +600,9 @@ class TestCleanTemplateResponseArrayFields:
         self, bioportal_api_key: str, sample_template_with_array_field: Dict[str, Any]
     ):
         """Test cleaning template with array field (array of TemplateFields)."""
-        result = clean_template_response(sample_template_with_array_field, bioportal_api_key)
+        result = clean_template_response(
+            sample_template_with_array_field, bioportal_api_key
+        )
 
         assert result["type"] == "template"
         assert result["name"] == "Template with Array Field"
@@ -614,24 +623,32 @@ class TestCleanTemplateResponseArrayFields:
         assert array_field["datatype"] == "string"
         assert array_field["is_array"] is True
         assert "children" not in array_field
-        assert array_field["description"] == "Additional notes or comments about the resource."
+        assert (
+            array_field["description"]
+            == "Additional notes or comments about the resource."
+        )
 
-    def test_array_field_properties(self, bioportal_api_key: str, sample_array_template_field: Dict[str, Any]):
+    def test_array_field_properties(
+        self, bioportal_api_key: str, sample_array_template_field: Dict[str, Any]
+    ):
         """Test that array field properties are correctly extracted from items structure."""
         template_data = {
             "schema:name": "Array Field Test",
             "_ui": {"order": ["notes_array"]},
-            "properties": {"notes_array": sample_array_template_field}
+            "properties": {"notes_array": sample_array_template_field},
         }
 
         result = clean_template_response(template_data, bioportal_api_key)
-        
+
         assert len(result["children"]) == 1
         array_field = result["children"][0]
-        
+
         # Verify properties extracted from items structure
         assert array_field["name"] == "Notes"
-        assert array_field["description"] == "Additional notes or comments about the resource."
+        assert (
+            array_field["description"]
+            == "Additional notes or comments about the resource."
+        )
         assert array_field["prefLabel"] == "Notes"
         assert array_field["datatype"] == "string"
         assert array_field["is_array"] is True
@@ -651,8 +668,8 @@ class TestCleanTemplateResponseArrayFields:
                         "schema:name": "Notes",
                         "schema:description": "Array of note fields",
                         "skos:prefLabel": "Notes",
-                        "_valueConstraints": {"requiredValue": False}
-                    }
+                        "_valueConstraints": {"requiredValue": False},
+                    },
                 },
                 "elements_array": {
                     "type": "array",
@@ -669,16 +686,16 @@ class TestCleanTemplateResponseArrayFields:
                                 "schema:name": "Inner Field",
                                 "schema:description": "Field inside element",
                                 "skos:prefLabel": "Inner Field",
-                                "_valueConstraints": {"requiredValue": True}
+                                "_valueConstraints": {"requiredValue": True},
                             }
-                        }
-                    }
-                }
-            }
+                        },
+                    },
+                },
+            },
         }
 
         result = clean_template_response(template_data, bioportal_api_key)
-        
+
         assert len(result["children"]) == 2
         children_by_name = {child["name"]: child for child in result["children"]}
 

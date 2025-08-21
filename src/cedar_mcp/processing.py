@@ -220,11 +220,8 @@ def _transform_field(
         Transformed output field
     """
     # Check if this is an array of fields
-    is_field_array = (
-        field_data.get("type") == "array" 
-        and "items" in field_data 
-    )
-    
+    is_field_array = field_data.get("type") == "array" and "items" in field_data
+
     if is_field_array:
         # For array fields, replace field data from the items structure
         field_data = field_data["items"]
@@ -234,16 +231,16 @@ def _transform_field(
     description = field_data.get("schema:description", "")
     pref_label = field_data.get("skos:prefLabel", name)
     constraints = field_data.get("_valueConstraints", {})
-    
+
     # Determine datatype
     datatype = _determine_datatype(field_data)
-    
+
     # Extract controlled term values
     values = _extract_controlled_term_values(field_data, bioportal_api_key)
-    
+
     # Extract default value
     default = _extract_default_value(field_data)
-    
+
     # Extract regex if present
     regex = constraints.get("regex")
 
@@ -262,6 +259,7 @@ def _transform_field(
         default=default,
         values=values,
     )
+
 
 def _transform_element(
     element_name: str, element_data: Dict[str, Any], bioportal_api_key: str
@@ -343,15 +341,24 @@ def _process_element_children(
 
                 if child_type == "https://schema.metadatacenter.org/core/TemplateField":
                     # It's a field
-                    field_child = _transform_field(child_name, child_data, bioportal_api_key)
+                    field_child = _transform_field(
+                        child_name, child_data, bioportal_api_key
+                    )
                     children.append(field_child)
-                elif child_type == "https://schema.metadatacenter.org/core/TemplateElement":
+                elif (
+                    child_type
+                    == "https://schema.metadatacenter.org/core/TemplateElement"
+                ):
                     # It's an element
-                    element_child = _transform_element(child_name, child_data, bioportal_api_key)
+                    element_child = _transform_element(
+                        child_name, child_data, bioportal_api_key
+                    )
                     children.append(element_child)
                 elif child_data.get("type") == "array" and "items" in child_data:
                     # It's an array of elements
-                    array_child = _transform_element(child_name, child_data, bioportal_api_key)
+                    array_child = _transform_element(
+                        child_name, child_data, bioportal_api_key
+                    )
                     children.append(array_child)
 
     return children
@@ -404,7 +411,10 @@ def clean_template_response(
                         item_name, item_data, bioportal_api_key
                     )
                     output_children.append(field_child)
-                elif item_type == "https://schema.metadatacenter.org/core/TemplateElement":
+                elif (
+                    item_type
+                    == "https://schema.metadatacenter.org/core/TemplateElement"
+                ):
                     # It's a template element (possibly an array)
                     element_child = _transform_element(
                         item_name, item_data, bioportal_api_key
@@ -413,13 +423,19 @@ def clean_template_response(
                 elif item_data.get("type") == "array" and "items" in item_data:
                     # It's an array - check what type of items it contains
                     items_type = item_data["items"].get("@type", "")
-                    if items_type == "https://schema.metadatacenter.org/core/TemplateField":
+                    if (
+                        items_type
+                        == "https://schema.metadatacenter.org/core/TemplateField"
+                    ):
                         # Array of fields - treat as a field with array marker
                         field_child = _transform_field(
                             item_name, item_data, bioportal_api_key
                         )
                         output_children.append(field_child)
-                    elif items_type == "https://schema.metadatacenter.org/core/TemplateElement":
+                    elif (
+                        items_type
+                        == "https://schema.metadatacenter.org/core/TemplateElement"
+                    ):
                         # Array of elements - treat as an element
                         element_child = _transform_element(
                             item_name, item_data, bioportal_api_key

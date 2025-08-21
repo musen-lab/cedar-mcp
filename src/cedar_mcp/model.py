@@ -66,7 +66,9 @@ class ElementDefinition(BaseModel):
         "element", description="Data type (always 'element' for TemplateElements)"
     )
     configuration: FieldConfiguration = Field(..., description="Element configuration")
-    is_array: bool = Field(False, description="Whether this element represents an array")
+    is_array: bool = Field(
+        False, description="Whether this element represents an array"
+    )
     children: List[Union["FieldDefinition", "ElementDefinition"]] = Field(
         default_factory=list, description="Nested fields and elements"
     )
