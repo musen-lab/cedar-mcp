@@ -328,6 +328,134 @@ class TestEndToEndWorkflow:
         except requests.exceptions.RequestException as e:
             pytest.fail(f"End-to-end workflow failed: {str(e)}")
 
+    @pytest.mark.integration
+    def test_complete_template_instance_processing_workflow(
+        self, cedar_api_key: str, sample_cedar_template_instance_id: str
+    ):
+        """Test complete workflow from CEDAR API to cleaned template instance."""
+        # Step 1: Fetch template instance from CEDAR API
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"apiKey {cedar_api_key}",
+        }
+
+        from urllib.parse import quote
+
+        encoded_instance_id = quote(sample_cedar_template_instance_id, safe="")
+        base_url = f"https://resource.metadatacenter.org/template-instances/{encoded_instance_id}"
+
+        try:
+            response = requests.get(base_url, headers=headers, timeout=30)
+            response.raise_for_status()
+            raw_instance = response.json()
+
+            # Step 2: Clean and transform template instance
+            from src.cedar_mcp.processing import clean_template_instance_response
+
+            cleaned_instance = clean_template_instance_response(raw_instance)
+
+            # Step 3: Verify complete transformation
+            assert isinstance(cleaned_instance, dict)
+
+            # Verify root-level metadata removal
+            root_metadata_fields = {
+                "@context",
+                "schema:isBasedOn",
+                "schema:name",
+                "schema:description",
+                "pav:createdOn",
+                "pav:createdBy",
+                "oslc:modifiedBy",
+                "@id",
+            }
+            for field in root_metadata_fields:
+                assert field not in cleaned_instance, (
+                    f"Root metadata field '{field}' should be removed"
+                )
+
+            # Step 4: Verify nested @context removal and template-element-instance @id removal
+            def check_nested_structure(obj, path=""):
+                """Recursively check that @context and template-element-instance @ids are removed."""
+                if isinstance(obj, dict):
+                    # Check no @context fields exist
+                    assert "@context" not in obj, f"@context found at path: {path}"
+
+                    # Check template-element-instance @id removal
+                    if "@id" in obj:
+                        id_value = obj["@id"]
+                        assert "template-element-instances" not in id_value, (
+                            f"template-element-instance @id found at path: {path}"
+                        )
+
+                    # Check for proper @id -> iri transformation
+                    if "iri" in obj:
+                        # Verify it's a proper IRI and not a template-element-instance
+                        iri_value = obj["iri"]
+                        assert isinstance(iri_value, str), (
+                            f"iri should be string at path: {path}"
+                        )
+                        assert "template-element-instances" not in iri_value, (
+                            f"template-element-instance iri found at path: {path}"
+                        )
+
+                    # Check for proper rdfs:label -> label transformation
+                    assert "rdfs:label" not in obj, (
+                        f"rdfs:label found at path: {path} (should be 'label')"
+                    )
+
+                    # Recursively check nested objects
+                    for key, value in obj.items():
+                        check_nested_structure(value, f"{path}.{key}" if path else key)
+
+                elif isinstance(obj, list):
+                    # Recursively check list items
+                    for i, item in enumerate(obj):
+                        check_nested_structure(
+                            item, f"{path}[{i}]" if path else f"[{i}]"
+                        )
+
+            check_nested_structure(cleaned_instance)
+
+            # Step 5: Verify @value flattening (only when @value is the sole key)
+            def check_value_flattening(obj, path=""):
+                """Recursively check that single @value objects are properly flattened."""
+                if isinstance(obj, dict):
+                    # Check for single-key @value objects (these should be flattened)
+                    if len(obj) == 1 and "@value" in obj:
+                        # This should not happen since these get flattened
+                        assert False, (
+                            f"Single @value object found at path: {path} (should be flattened)"
+                        )
+
+                    # Objects with @value and other keys (like @type) should be preserved
+                    # This is the correct behavior
+
+                    # Recursively check nested objects
+                    for key, value in obj.items():
+                        check_value_flattening(value, f"{path}.{key}" if path else key)
+
+                elif isinstance(obj, list):
+                    # Recursively check list items
+                    for i, item in enumerate(obj):
+                        check_value_flattening(
+                            item, f"{path}[{i}]" if path else f"[{i}]"
+                        )
+
+            check_value_flattening(cleaned_instance)
+
+            # Step 6: Verify data integrity - check that important data fields are preserved
+            # (This varies by template instance, but we can check for non-empty structure)
+            assert len(cleaned_instance) > 0, "Cleaned instance should not be empty"
+
+            # Log some sample fields for debugging (if needed)
+            print(f"Cleaned instance has {len(cleaned_instance)} top-level fields")
+            if cleaned_instance:
+                sample_keys = list(cleaned_instance.keys())[:5]  # First 5 keys
+                print(f"Sample field names: {sample_keys}")
+
+        except requests.exceptions.RequestException as e:
+            pytest.fail(f"End-to-end template instance workflow failed: {str(e)}")
+
     @pytest.mark.slow
     def test_template_with_bioportal_integration(
         self, cedar_api_key: str, sample_cedar_template_id: str

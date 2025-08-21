@@ -359,9 +359,16 @@ def _transform_jsonld_structure(obj: Any) -> Any:
         # Transform dictionary
         transformed = {}
         for key, value in obj.items():
-            # Transform key names
+            # Skip @context fields in nested objects
+            if key == "@context":
+                continue
+
+            # Handle @id fields - remove if they contain template-element-instances
             if key == "@id":
-                new_key = "iri"
+                if isinstance(value, str) and "template-element-instances" in value:
+                    continue  # Skip template-element-instance @id fields
+                else:
+                    new_key = "iri"  # Transform other @id fields to iri
             elif key == "rdfs:label":
                 new_key = "label"
             else:

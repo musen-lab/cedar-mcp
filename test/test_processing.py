@@ -395,3 +395,196 @@ class TestCleanTemplateInstanceResponse:
             "doi:10.1038/s41467-019-10861-2",
             "doi:10.1038/s41586-020-2941-1",
         ]
+
+    def test_nested_context_removal(self):
+        """Test that @context fields are removed from nested objects and arrays."""
+        sample_instance = {
+            "Project Title": [
+                {
+                    "@context": {
+                        "title": "http://purl.org/dc/elements/1.1/title",
+                        "language": "http://def.isotc211.org/iso19115/2003/IdentificationInformation#MD_DataIdentification.language",
+                    },
+                    "title": {"@value": "Test Project Title"},
+                    "language": {
+                        "@id": "https://www.omg.org/spec/LCC/Languages/LaISO639-1-LanguageCodes/en",
+                        "rdfs:label": "en",
+                    },
+                }
+            ],
+            "Principal Investigator": {
+                "@context": {
+                    "ORCID": "https://schema.metadatacenter.org/properties/ee24c19a-1bb5-4693-8775-52ab7716108c"
+                },
+                "ORCID": {"@value": "https://orcid.org/0000-0003-1791-3626"},
+            },
+        }
+
+        cleaned = clean_template_instance_response(sample_instance)
+
+        # Verify nested @context fields are removed
+        assert "@context" not in cleaned["Project Title"][0]
+        assert "@context" not in cleaned["Principal Investigator"]
+
+        # Verify other data is preserved and transformed correctly
+        assert cleaned["Project Title"][0]["title"] == "Test Project Title"
+        assert (
+            cleaned["Project Title"][0]["language"]["iri"]
+            == "https://www.omg.org/spec/LCC/Languages/LaISO639-1-LanguageCodes/en"
+        )
+        assert cleaned["Project Title"][0]["language"]["label"] == "en"
+        assert (
+            cleaned["Principal Investigator"]["ORCID"]
+            == "https://orcid.org/0000-0003-1791-3626"
+        )
+
+    def test_template_element_instance_id_removal(self):
+        """Test that @id fields containing template-element-instances are removed."""
+        sample_instance = {
+            "Project Title": [
+                {
+                    "title": {"@value": "Test Project"},
+                    "@id": "https://repo.metadatacenter.org/template-element-instances/8f727c0b-4033-49b7-92da-de12a7141550",
+                }
+            ],
+            "Principal Investigator": {
+                "ORCID": {"@value": "https://orcid.org/0000-0003-1791-3626"},
+                "@id": "https://repo.metadatacenter.org/template-element-instances/bcc6c4da-802a-4026-9718-8d439267febd",
+            },
+            "Data Steward": [
+                {
+                    "Focus": [{"@value": "research oriented"}],
+                    "@id": "https://repo.metadatacenter.org/template-element-instances/75b76f22-5928-4ec4-a164-0b313afb2f4e",
+                },
+                {
+                    "Focus": [{"@value": "infrastructure oriented"}]
+                    # Note: This one has no @id field, which should work fine
+                },
+            ],
+        }
+
+        cleaned = clean_template_instance_response(sample_instance)
+
+        # Verify template-element-instance @id fields are removed
+        assert "@id" not in cleaned["Project Title"][0]
+        assert "iri" not in cleaned["Project Title"][0]
+        assert "@id" not in cleaned["Principal Investigator"]
+        assert "iri" not in cleaned["Principal Investigator"]
+        assert "@id" not in cleaned["Data Steward"][0]
+        assert "iri" not in cleaned["Data Steward"][0]
+
+        # Verify other data is preserved and transformed correctly
+        assert cleaned["Project Title"][0]["title"] == "Test Project"
+        assert (
+            cleaned["Principal Investigator"]["ORCID"]
+            == "https://orcid.org/0000-0003-1791-3626"
+        )
+        assert cleaned["Data Steward"][0]["Focus"] == ["research oriented"]
+        assert cleaned["Data Steward"][1]["Focus"] == ["infrastructure oriented"]
+
+    def test_non_template_element_instance_id_preservation(self):
+        """Test that @id fields NOT containing template-element-instances are preserved as iri."""
+        sample_instance = {
+            "Lead Institution": {
+                "@id": "http://www.fair-data-collective.com/zonmw/projectadmin/MaastrichtUniversity",
+                "rdfs:label": "Maastricht University",
+            },
+            "Province": [
+                {
+                    "@id": "http://www.fair-data-collective.com/zonmw/projectadmin/Limburg",
+                    "rdfs:label": "Limburg",
+                }
+            ],
+            "Country": [
+                {
+                    "@id": "http://purl.bioontology.org/ontology/MESH/D009426",
+                    "rdfs:label": "Netherlands",
+                }
+            ],
+            # Root level template-instances (not template-element-instances) should also be removed by root cleanup
+            "nested_data": {
+                "sub_item": {
+                    "@id": "http://example.org/some-other-resource",
+                    "rdfs:label": "Some Resource",
+                }
+            },
+        }
+
+        cleaned = clean_template_instance_response(sample_instance)
+
+        # Verify non-template-element-instance @id fields are transformed to iri
+        assert (
+            cleaned["Lead Institution"]["iri"]
+            == "http://www.fair-data-collective.com/zonmw/projectadmin/MaastrichtUniversity"
+        )
+        assert cleaned["Lead Institution"]["label"] == "Maastricht University"
+        assert "@id" not in cleaned["Lead Institution"]
+        assert "rdfs:label" not in cleaned["Lead Institution"]
+
+        assert (
+            cleaned["Province"][0]["iri"]
+            == "http://www.fair-data-collective.com/zonmw/projectadmin/Limburg"
+        )
+        assert cleaned["Province"][0]["label"] == "Limburg"
+        assert "@id" not in cleaned["Province"][0]
+        assert "rdfs:label" not in cleaned["Province"][0]
+
+        assert (
+            cleaned["Country"][0]["iri"]
+            == "http://purl.bioontology.org/ontology/MESH/D009426"
+        )
+        assert cleaned["Country"][0]["label"] == "Netherlands"
+        assert "@id" not in cleaned["Country"][0]
+        assert "rdfs:label" not in cleaned["Country"][0]
+
+        # Verify nested non-template-element-instance @id is also transformed
+        assert (
+            cleaned["nested_data"]["sub_item"]["iri"]
+            == "http://example.org/some-other-resource"
+        )
+        assert cleaned["nested_data"]["sub_item"]["label"] == "Some Resource"
+        assert "@id" not in cleaned["nested_data"]["sub_item"]
+        assert "rdfs:label" not in cleaned["nested_data"]["sub_item"]
+
+    def test_complex_nested_structure_with_context_and_ids(self):
+        """Test a complex structure combining both @context and @id removal scenarios."""
+        sample_instance = {
+            "Funder Information": [
+                {
+                    "@context": {
+                        "funderName": "https://schema.metadatacenter.org/properties/0eb27432-1ede-44a1-87c2-bed2081cab5c",
+                        "Funder GRID reference": "https://schema.metadatacenter.org/properties/41a72a33-f1c7-4c0b-8b26-129bc1793ea8",
+                    },
+                    "funderName": {"@value": "ZonMw"},
+                    "Funder GRID reference": {"@value": "grid.438427.e"},
+                    "@id": "https://repo.metadatacenter.org/template-element-instances/c6eeacfd-8d80-4742-8ba2-d707802dd6a4",
+                }
+            ],
+            "Project Partner Institution": [
+                {
+                    "@id": "http://www.fair-data-collective.com/zonmw/projectadmin/MaastrichtUniversityMedicalCentre"
+                }
+            ],
+        }
+
+        cleaned = clean_template_instance_response(sample_instance)
+
+        # Verify @context is removed from nested object
+        assert "@context" not in cleaned["Funder Information"][0]
+
+        # Verify template-element-instance @id is removed
+        assert "@id" not in cleaned["Funder Information"][0]
+        assert "iri" not in cleaned["Funder Information"][0]
+
+        # Verify non-template-element-instance @id is transformed to iri
+        assert (
+            cleaned["Project Partner Institution"][0]["iri"]
+            == "http://www.fair-data-collective.com/zonmw/projectadmin/MaastrichtUniversityMedicalCentre"
+        )
+        assert "@id" not in cleaned["Project Partner Institution"][0]
+
+        # Verify @value flattening still works
+        assert cleaned["Funder Information"][0]["funderName"] == "ZonMw"
+        assert (
+            cleaned["Funder Information"][0]["Funder GRID reference"] == "grid.438427.e"
+        )

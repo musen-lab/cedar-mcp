@@ -36,6 +36,12 @@ def sample_cedar_template_id() -> str:
 
 
 @pytest.fixture
+def sample_cedar_template_instance_id() -> str:
+    """Known stable CEDAR template ID for testing."""
+    return "https://repo.metadatacenter.org/template-instances/60f3206f-13a6-42d3-9493-638681ea7f69"
+
+
+@pytest.fixture
 def sample_bioportal_branch() -> Dict[str, str]:
     """Known stable BioPortal branch for testing."""
     return {
