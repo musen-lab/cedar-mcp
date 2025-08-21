@@ -430,11 +430,15 @@ class TestEndToEndWorkflow:
 
                     # Check that @value and @type objects are properly converted
                     if "@value" in obj or "@type" in obj:
-                        assert False, f"@value or @type found at path: {path} (should be converted)"
+                        assert False, (
+                            f"@value or @type found at path: {path} (should be converted)"
+                        )
 
                     # Recursively check nested objects
                     for key, value in obj.items():
-                        check_value_flattening_and_type_conversion(value, f"{path}.{key}" if path else key)
+                        check_value_flattening_and_type_conversion(
+                            value, f"{path}.{key}" if path else key
+                        )
 
                 elif isinstance(obj, list):
                     # Recursively check list items
@@ -450,17 +454,23 @@ class TestEndToEndWorkflow:
             if "Project duration" in cleaned_instance:
                 # Should be converted to numeric
                 assert isinstance(cleaned_instance["Project duration"], (int, float))
-                print(f"Project duration: {cleaned_instance['Project duration']} (type: {type(cleaned_instance['Project duration'])})")
+                print(
+                    f"Project duration: {cleaned_instance['Project duration']} (type: {type(cleaned_instance['Project duration'])})"
+                )
 
             if "Start date" in cleaned_instance:
                 # Should remain as string (xsd:date)
                 assert isinstance(cleaned_instance["Start date"], str)
-                print(f"Start date: {cleaned_instance['Start date']} (type: {type(cleaned_instance['Start date'])})")
+                print(
+                    f"Start date: {cleaned_instance['Start date']} (type: {type(cleaned_instance['Start date'])})"
+                )
 
             if "End date" in cleaned_instance:
                 # Should remain as string (xsd:date)
                 assert isinstance(cleaned_instance["End date"], str)
-                print(f"End date: {cleaned_instance['End date']} (type: {type(cleaned_instance['End date'])})")
+                print(
+                    f"End date: {cleaned_instance['End date']} (type: {type(cleaned_instance['End date'])})"
+                )
 
             # Step 7: Verify data integrity - check that important data fields are preserved
             # (This varies by template instance, but we can check for non-empty structure)
