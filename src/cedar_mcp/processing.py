@@ -355,10 +355,17 @@ def _is_template_element(field_data: Dict[str, Any]) -> bool:
         True if it's a template element, False if it's a simple field
     """
     field_type = field_data.get("@type", "")
-    return (
-        field_type == "https://schema.metadatacenter.org/core/TemplateElement"
-        or (field_data.get("type") == "array" and "items" in field_data)
-    )
+    
+    # Direct TemplateElement
+    if field_type == "https://schema.metadatacenter.org/core/TemplateElement":
+        return True
+    
+    # Array - check what's inside the items
+    if field_data.get("type") == "array" and "items" in field_data:
+        items_type = field_data["items"].get("@type", "")
+        return items_type == "https://schema.metadatacenter.org/core/TemplateElement"
+    
+    return False
 
 
 def clean_template_response(
@@ -417,6 +424,21 @@ def clean_template_response(
                         item_name, item_data, bioportal_api_key
                     )
                     output_children.append(element_child)
+                elif item_data.get("type") == "array" and "items" in item_data:
+                    # It's an array - check what type of items it contains
+                    items_type = item_data["items"].get("@type", "")
+                    if items_type == "https://schema.metadatacenter.org/core/TemplateField":
+                        # Array of fields - treat as a field with array marker
+                        field_child = _transform_field(
+                            item_name, item_data, bioportal_api_key
+                        )
+                        output_children.append(field_child)
+                    elif items_type == "https://schema.metadatacenter.org/core/TemplateElement":
+                        # Array of elements - treat as an element
+                        element_child = _transform_element(
+                            item_name, item_data, bioportal_api_key
+                        )
+                        output_children.append(element_child)
 
     # Create output template
     output_template = SimplifiedTemplate(

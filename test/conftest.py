@@ -211,6 +211,54 @@ def sample_array_template_element() -> Dict[str, Any]:
 
 
 @pytest.fixture
+def sample_array_template_field() -> Dict[str, Any]:
+    """Sample array template field (array of TemplateFields) for testing."""
+    return {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+            "@type": "https://schema.metadatacenter.org/core/TemplateField",
+            "schema:name": "Notes",
+            "schema:description": "Additional notes or comments about the resource.",
+            "skos:prefLabel": "Notes",
+            "_valueConstraints": {"requiredValue": False}
+        }
+    }
+
+
+@pytest.fixture
+def sample_template_with_array_field() -> Dict[str, Any]:
+    """Template containing an array field (array of TemplateFields) for testing."""
+    return {
+        "schema:name": "Template with Array Field",
+        "title": "Template with Array Field Schema",
+        "_ui": {
+            "order": ["Simple Field", "Notes Array"]
+        },
+        "properties": {
+            "Simple Field": {
+                "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                "schema:name": "Simple Field",
+                "schema:description": "A simple field for testing",
+                "skos:prefLabel": "Simple Field",
+                "_valueConstraints": {"requiredValue": False}
+            },
+            "Notes Array": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                    "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                    "schema:name": "Notes",
+                    "schema:description": "Additional notes or comments about the resource.",
+                    "skos:prefLabel": "Notes",
+                    "_valueConstraints": {"requiredValue": False}
+                }
+            }
+        }
+    }
+
+
+@pytest.fixture
 def sample_complex_nested_template() -> Dict[str, Any]:
     """Complex template with multiple levels of nesting and arrays for testing."""
     return {

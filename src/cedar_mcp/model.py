@@ -44,6 +44,7 @@ class FieldDefinition(BaseModel):
         ..., description="Data type (string, integer, decimal, boolean)"
     )
     configuration: FieldConfiguration = Field(..., description="Field configuration")
+    is_array: bool = Field(False, description="Whether this field represents an array")
     regex: Optional[str] = Field(None, description="Validation regex pattern")
     default: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
         None, description="Default value"

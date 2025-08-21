@@ -631,6 +631,117 @@ class TestCleanTemplateResponseNested:
 
 
 @pytest.mark.unit
+class TestCleanTemplateResponseArrayFields:
+    """Tests for clean_template_response function with array fields (arrays of TemplateFields)."""
+
+    def test_clean_template_with_array_field(
+        self, bioportal_api_key: str, sample_template_with_array_field: Dict[str, Any]
+    ):
+        """Test cleaning template with array field (array of TemplateFields)."""
+        result = clean_template_response(sample_template_with_array_field, bioportal_api_key)
+
+        assert result["type"] == "template"
+        assert result["name"] == "Template with Array Field"
+        assert len(result["children"]) == 2
+
+        # Check structure
+        children_by_name = {child["name"]: child for child in result["children"]}
+
+        # Simple field should not be array
+        simple_field = children_by_name["Simple Field"]
+        assert simple_field["datatype"] == "string"
+        assert simple_field["is_array"] is False
+        assert "children" not in simple_field
+
+        # Array field should be marked as array
+        array_field = children_by_name["Notes"]
+        assert array_field["name"] == "Notes"
+        assert array_field["datatype"] == "string"
+        assert array_field["is_array"] is True
+        assert "children" not in array_field
+        assert array_field["description"] == "Additional notes or comments about the resource."
+
+    def test_array_field_properties(self, bioportal_api_key: str, sample_array_template_field: Dict[str, Any]):
+        """Test that array field properties are correctly extracted from items structure."""
+        template_data = {
+            "schema:name": "Array Field Test",
+            "_ui": {"order": ["notes_array"]},
+            "properties": {"notes_array": sample_array_template_field}
+        }
+
+        result = clean_template_response(template_data, bioportal_api_key)
+        
+        assert len(result["children"]) == 1
+        array_field = result["children"][0]
+        
+        # Verify properties extracted from items structure
+        assert array_field["name"] == "Notes"
+        assert array_field["description"] == "Additional notes or comments about the resource."
+        assert array_field["prefLabel"] == "Notes"
+        assert array_field["datatype"] == "string"
+        assert array_field["is_array"] is True
+        assert array_field["configuration"]["required"] is False
+
+    def test_mixed_array_fields_and_elements(self, bioportal_api_key: str):
+        """Test template with both array fields and array elements."""
+        template_data = {
+            "schema:name": "Mixed Arrays Template",
+            "_ui": {"order": ["notes_array", "elements_array"]},
+            "properties": {
+                "notes_array": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                        "schema:name": "Notes",
+                        "schema:description": "Array of note fields",
+                        "skos:prefLabel": "Notes",
+                        "_valueConstraints": {"requiredValue": False}
+                    }
+                },
+                "elements_array": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "@type": "https://schema.metadatacenter.org/core/TemplateElement",
+                        "schema:name": "Complex Item",
+                        "schema:description": "Array of complex elements",
+                        "skos:prefLabel": "Complex Item",
+                        "_ui": {"order": ["inner_field"]},
+                        "properties": {
+                            "inner_field": {
+                                "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                                "schema:name": "Inner Field",
+                                "schema:description": "Field inside element",
+                                "skos:prefLabel": "Inner Field",
+                                "_valueConstraints": {"requiredValue": True}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        result = clean_template_response(template_data, bioportal_api_key)
+        
+        assert len(result["children"]) == 2
+        children_by_name = {child["name"]: child for child in result["children"]}
+
+        # Array field should be a simple array field
+        notes_array = children_by_name["Notes"]
+        assert notes_array["datatype"] == "string"
+        assert notes_array["is_array"] is True
+        assert "children" not in notes_array
+
+        # Array element should be an array element with children
+        elements_array = children_by_name["Complex Item"]
+        assert elements_array["datatype"] == "element"
+        assert elements_array["is_array"] is True
+        assert len(elements_array["children"]) == 1
+        assert elements_array["children"][0]["name"] == "Inner Field"
+
+
+@pytest.mark.unit
 class TestCleanTemplateInstanceResponse:
     """Tests for clean_template_instance_response function - core transformations."""
 
