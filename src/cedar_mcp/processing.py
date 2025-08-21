@@ -7,6 +7,7 @@ from .model import (
     ControlledTermDefault,
     FieldConfiguration,
     FieldDefinition,
+    ElementDefinition,
     SimplifiedTemplate,
 )
 from .external_api import get_children_from_branch
@@ -250,12 +251,122 @@ def _transform_field(
         values=values,
     )
 
+def _transform_element(
+    element_name: str, element_data: Dict[str, Any], bioportal_api_key: str
+) -> ElementDefinition:
+    """
+    Transform a single template element from input JSON-LD to output structure.
+
+    Args:
+        element_name: Name of the element
+        element_data: Element data from input JSON-LD
+        bioportal_api_key: BioPortal API key for fetching controlled term values
+    Returns:
+        Transformed output element
+    """
+    # Check if this is an array element
+    is_array = element_data.get("type") == "array"
+
+    # For array elements, extract information from the items structure
+    if is_array and "items" in element_data:
+        item_data = element_data["items"]
+        name = item_data.get("schema:name", element_name)
+        description = item_data.get("schema:description", "")
+        pref_label = item_data.get("skos:prefLabel", name)
+        constraints = item_data.get("_valueConstraints", {})
+        children = _process_element_children(item_data, bioportal_api_key)
+    else:
+        # For regular elements, extract from the element itself
+        name = element_data.get("schema:name", element_name)
+        description = element_data.get("schema:description", "")
+        pref_label = element_data.get("skos:prefLabel", name)
+        constraints = element_data.get("_valueConstraints", {})
+        children = _process_element_children(element_data, bioportal_api_key)
+
+    # Extract configuration
+    required = constraints.get("requiredValue", False)
+    configuration = FieldConfiguration(required=required)
+
+    # Process nested children
+    children_list: List[Union[FieldDefinition, ElementDefinition]] = children
+
+    return ElementDefinition(
+        name=name,
+        description=description,
+        prefLabel=pref_label,
+        datatype="element",
+        configuration=configuration,
+        is_array=is_array,
+        children=children_list,
+    )
+
+
+def _process_element_children(
+    element_data: Dict[str, Any], bioportal_api_key: str
+) -> List[Union[FieldDefinition, ElementDefinition]]:
+    """
+    Process the children of a template element, handling nested fields and elements.
+
+    Args:
+        element_data: Element data containing properties and UI order
+        bioportal_api_key: BioPortal API key for fetching controlled term values
+    Returns:
+        List of child field and element definitions
+    """
+    children: List[Union[FieldDefinition, ElementDefinition]] = []
+
+    # Get field order from UI configuration
+    ui_config = element_data.get("_ui", {})
+    field_order = ui_config.get("order", [])
+
+    # Get properties section
+    properties = element_data.get("properties", {})
+
+    # Process children in the specified UI order
+    for child_name in field_order:
+        if child_name in properties:
+            child_data = properties[child_name]
+            if isinstance(child_data, dict):
+                child_type = child_data.get("@type", "")
+
+                if child_type == "https://schema.metadatacenter.org/core/TemplateField":
+                    # It's a field
+                    field_child = _transform_field(child_name, child_data, bioportal_api_key)
+                    children.append(field_child)
+                elif child_type == "https://schema.metadatacenter.org/core/TemplateElement":
+                    # It's an element
+                    element_child = _transform_element(child_name, child_data, bioportal_api_key)
+                    children.append(element_child)
+                elif child_data.get("type") == "array" and "items" in child_data:
+                    # It's an array of elements
+                    array_child = _transform_element(child_name, child_data, bioportal_api_key)
+                    children.append(array_child)
+
+    return children
+
+
+def _is_template_element(field_data: Dict[str, Any]) -> bool:
+    """
+    Determine if a field is actually a template element.
+
+    Args:
+        field_data: Field/element data from input JSON-LD
+    Returns:
+        True if it's a template element, False if it's a simple field
+    """
+    field_type = field_data.get("@type", "")
+    return (
+        field_type == "https://schema.metadatacenter.org/core/TemplateElement"
+        or (field_data.get("type") == "array" and "items" in field_data)
+    )
+
 
 def clean_template_response(
     template_data: Dict[str, Any], bioportal_api_key: str
 ) -> Dict[str, Any]:
     """
     Clean and transform the raw CEDAR template JSON-LD to simplified YAML structure.
+    Now supports nested objects, arrays, and template elements.
 
     Args:
         template_data: Raw template data from CEDAR (JSON-LD format)
@@ -281,22 +392,35 @@ def clean_template_response(
     # Get properties section
     properties = template_data.get("properties", {})
 
-    # Transform fields in the specified order (field_order covers all CEDAR fields)
-    output_fields = []
+    # Transform fields and elements in the specified order
+    output_children: List[Union[FieldDefinition, ElementDefinition]] = []
 
-    # Process fields only in UI order since it covers all template fields
-    for field_name in field_order:
-        if field_name in properties:
-            field_data = properties[field_name]
-            if isinstance(field_data, dict) and "@type" in field_data:
-                output_field = _transform_field(
-                    field_name, field_data, bioportal_api_key
-                )
-                output_fields.append(output_field)
+    # Process fields/elements only in UI order since it covers all template items
+    for item_name in field_order:
+        if item_name in properties:
+            item_data = properties[item_name]
+            if isinstance(item_data, dict):
+                item_type = item_data.get("@type", "")
+
+                if item_type == "https://schema.metadatacenter.org/core/TemplateField":
+                    # It's a simple field
+                    field_child = _transform_field(
+                        item_name, item_data, bioportal_api_key
+                    )
+                    output_children.append(field_child)
+                elif (
+                    item_type == "https://schema.metadatacenter.org/core/TemplateElement"
+                    or _is_template_element(item_data)
+                ):
+                    # It's a template element (possibly an array)
+                    element_child = _transform_element(
+                        item_name, item_data, bioportal_api_key
+                    )
+                    output_children.append(element_child)
 
     # Create output template
     output_template = SimplifiedTemplate(
-        type="template", name=template_name, children=output_fields
+        type="template", name=template_name, children=output_children
     )
 
     # Convert to dictionary for YAML export

@@ -343,6 +343,293 @@ class TestCleanTemplateResponse:
         assert result["name"] == "Unnamed Template"
 
 
+@pytest.mark.integration
+class TestTransformElement:
+    """Tests for _transform_element function."""
+
+    def test_transform_simple_element(
+        self, bioportal_api_key: str, sample_nested_template_element: Dict[str, Any]
+    ):
+        """Test transformation of a simple template element with nested fields."""
+        from src.cedar_mcp.processing import _transform_element
+        from src.cedar_mcp.model import ElementDefinition, FieldDefinition
+
+        result = _transform_element(
+            "resource_type", sample_nested_template_element, bioportal_api_key
+        )
+
+        assert isinstance(result, ElementDefinition)
+        assert result.name == "Resource Type"
+        assert result.description == "Information about the type of the resource being described with metadata."
+        assert result.prefLabel == "Resource Type"
+        assert result.datatype == "element"
+        assert result.is_array is False
+        assert len(result.children) == 2
+
+        # Check that children are fields
+        child_names = [child.name for child in result.children]
+        assert "Resource Type Category" in child_names
+        assert "Resource Type Detail" in child_names
+        assert all(isinstance(child, FieldDefinition) for child in result.children)
+
+    def test_transform_array_element(
+        self, bioportal_api_key: str, sample_array_template_element: Dict[str, Any]
+    ):
+        """Test transformation of an array template element."""
+        from src.cedar_mcp.processing import _transform_element
+        from src.cedar_mcp.model import ElementDefinition, FieldDefinition
+
+        result = _transform_element(
+            "data_file_title", sample_array_template_element, bioportal_api_key
+        )
+
+        assert isinstance(result, ElementDefinition)
+        assert result.name == "Data File Title"
+        assert result.datatype == "element"
+        assert result.is_array is True
+        assert len(result.children) == 2
+
+        # Check that children are fields from the items structure
+        child_names = [child.name for child in result.children]
+        assert "Data File Title" in child_names
+        assert "Title Language" in child_names
+        assert all(isinstance(child, FieldDefinition) for child in result.children)
+
+    def test_process_element_children(self, bioportal_api_key: str):
+        """Test processing of element children with mixed fields and elements."""
+        from src.cedar_mcp.processing import _process_element_children
+        from src.cedar_mcp.model import ElementDefinition, FieldDefinition
+
+        element_data = {
+            "_ui": {"order": ["simple_field", "nested_element"]},
+            "properties": {
+                "simple_field": {
+                    "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                    "schema:name": "Simple Field",
+                    "schema:description": "A simple field",
+                    "skos:prefLabel": "Simple Field",
+                    "_valueConstraints": {"requiredValue": False}
+                },
+                "nested_element": {
+                    "@type": "https://schema.metadatacenter.org/core/TemplateElement",
+                    "schema:name": "Nested Element",
+                    "schema:description": "A nested element",
+                    "skos:prefLabel": "Nested Element",
+                    "_valueConstraints": {"requiredValue": False},
+                    "_ui": {"order": []},
+                    "properties": {}
+                }
+            }
+        }
+
+        result = _process_element_children(element_data, bioportal_api_key)
+
+        assert len(result) == 2
+        assert isinstance(result[0], FieldDefinition)
+        assert isinstance(result[1], ElementDefinition)
+        assert result[0].name == "Simple Field"
+        assert result[1].name == "Nested Element"
+
+
+@pytest.mark.integration
+class TestIsTemplateElement:
+    """Tests for _is_template_element function."""
+
+    def test_identifies_template_element(self):
+        """Test that template elements are correctly identified."""
+        from src.cedar_mcp.processing import _is_template_element
+
+        element_data = {
+            "@type": "https://schema.metadatacenter.org/core/TemplateElement",
+            "schema:name": "Test Element"
+        }
+        assert _is_template_element(element_data) is True
+
+    def test_identifies_array_element(self):
+        """Test that array elements are correctly identified."""
+        from src.cedar_mcp.processing import _is_template_element
+
+        array_data = {
+            "type": "array",
+            "items": {"@type": "https://schema.metadatacenter.org/core/TemplateElement"}
+        }
+        assert _is_template_element(array_data) is True
+
+    def test_identifies_template_field(self):
+        """Test that template fields are not identified as elements."""
+        from src.cedar_mcp.processing import _is_template_element
+
+        field_data = {
+            "@type": "https://schema.metadatacenter.org/core/TemplateField",
+            "schema:name": "Test Field"
+        }
+        assert _is_template_element(field_data) is False
+
+    def test_identifies_unknown_type(self):
+        """Test that unknown types are not identified as elements."""
+        from src.cedar_mcp.processing import _is_template_element
+
+        unknown_data = {
+            "@type": "some.other.type",
+            "schema:name": "Unknown"
+        }
+        assert _is_template_element(unknown_data) is False
+
+
+@pytest.mark.integration
+class TestCleanTemplateResponseNested:
+    """Tests for clean_template_response function with nested structures."""
+
+    def test_clean_template_with_elements(
+        self, bioportal_api_key: str, sample_nested_template_element: Dict[str, Any]
+    ):
+        """Test cleaning template with template elements."""
+        template_data = {
+            "schema:name": "Template With Elements",
+            "_ui": {"order": ["resource_type"]},
+            "properties": {"resource_type": sample_nested_template_element}
+        }
+
+        result = clean_template_response(template_data, bioportal_api_key)
+
+        assert result["type"] == "template"
+        assert result["name"] == "Template With Elements"
+        assert len(result["children"]) == 1
+
+        element = result["children"][0]
+        assert element["name"] == "Resource Type"
+        assert element["datatype"] == "element"
+        assert element["is_array"] is False
+        assert len(element["children"]) == 2
+
+        # Verify nested fields
+        child_names = [child["name"] for child in element["children"]]
+        assert "Resource Type Category" in child_names
+        assert "Resource Type Detail" in child_names
+
+    def test_clean_template_with_array_elements(
+        self, bioportal_api_key: str, sample_array_template_element: Dict[str, Any]
+    ):
+        """Test cleaning template with array elements."""
+        template_data = {
+            "schema:name": "Template With Arrays",
+            "_ui": {"order": ["data_file_title"]},
+            "properties": {"data_file_title": sample_array_template_element}
+        }
+
+        result = clean_template_response(template_data, bioportal_api_key)
+
+        assert result["type"] == "template"
+        assert result["name"] == "Template With Arrays"
+        assert len(result["children"]) == 1
+
+        element = result["children"][0]
+        assert element["name"] == "Data File Title"
+        assert element["datatype"] == "element"
+        assert element["is_array"] is True
+        assert len(element["children"]) == 2
+
+        # Verify nested fields from array items
+        child_names = [child["name"] for child in element["children"]]
+        assert "Data File Title" in child_names
+        assert "Title Language" in child_names
+
+    def test_clean_complex_nested_template(
+        self, bioportal_api_key: str, sample_complex_nested_template: Dict[str, Any]
+    ):
+        """Test cleaning of complex template with multiple nesting levels."""
+        result = clean_template_response(sample_complex_nested_template, bioportal_api_key)
+
+        assert result["type"] == "template"
+        assert result["name"] == "Complex Nested Template"
+        assert len(result["children"]) == 4
+
+        # Check structure: Simple Field, Resource Type (element), Data File Title (array), Data File Spatial Coverage (nested array)
+        children_by_name = {child["name"]: child for child in result["children"]}
+
+        # Simple field
+        simple_field = children_by_name["Simple Field"]
+        assert simple_field["datatype"] == "string"
+        assert "children" not in simple_field
+
+        # Template element
+        resource_type = children_by_name["Resource Type"]
+        assert resource_type["datatype"] == "element"
+        assert resource_type["is_array"] is False
+        assert len(resource_type["children"]) == 2
+
+        # Array element
+        title_array = children_by_name["Data File Title"]
+        assert title_array["datatype"] == "element"
+        assert title_array["is_array"] is True
+        assert len(title_array["children"]) == 2
+
+        # Nested array element
+        spatial_coverage = children_by_name["Data File Spatial Coverage"]
+        assert spatial_coverage["datatype"] == "element"
+        assert spatial_coverage["is_array"] is True
+        assert len(spatial_coverage["children"]) == 3
+
+        # Check that nested coverage is also an array element
+        nested_children_by_name = {child["name"]: child for child in spatial_coverage["children"]}
+        nested_coverage = nested_children_by_name["Nested Coverage"]
+        assert nested_coverage["datatype"] == "element"
+        assert nested_coverage["is_array"] is True
+        assert len(nested_coverage["children"]) == 2
+
+    def test_mixed_fields_and_elements(self, bioportal_api_key: str):
+        """Test template with both simple fields and nested elements."""
+        template_data = {
+            "schema:name": "Mixed Template",
+            "_ui": {"order": ["simple_field", "complex_element"]},
+            "properties": {
+                "simple_field": {
+                    "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                    "schema:name": "Simple Field",
+                    "schema:description": "A simple field",
+                    "skos:prefLabel": "Simple Field",
+                    "_valueConstraints": {"requiredValue": False}
+                },
+                "complex_element": {
+                    "@type": "https://schema.metadatacenter.org/core/TemplateElement",
+                    "schema:name": "Complex Element",
+                    "schema:description": "A complex element",
+                    "skos:prefLabel": "Complex Element",
+                    "_valueConstraints": {"requiredValue": False},
+                    "_ui": {"order": ["nested_field"]},
+                    "properties": {
+                        "nested_field": {
+                            "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                            "schema:name": "Nested Field",
+                            "schema:description": "A nested field",
+                            "skos:prefLabel": "Nested Field",
+                            "_valueConstraints": {"requiredValue": True}
+                        }
+                    }
+                }
+            }
+        }
+
+        result = clean_template_response(template_data, bioportal_api_key)
+
+        assert len(result["children"]) == 2
+        
+        # First child should be a simple field
+        simple_child = result["children"][0]
+        assert simple_child["name"] == "Simple Field"
+        assert simple_child["datatype"] == "string"
+        assert "children" not in simple_child
+
+        # Second child should be an element with nested field
+        complex_child = result["children"][1]
+        assert complex_child["name"] == "Complex Element"
+        assert complex_child["datatype"] == "element"
+        assert complex_child["is_array"] is False
+        assert len(complex_child["children"]) == 1
+        assert complex_child["children"][0]["name"] == "Nested Field"
+        assert complex_child["children"][0]["configuration"]["required"] is True
+
+
 @pytest.mark.unit
 class TestCleanTemplateInstanceResponse:
     """Tests for clean_template_instance_response function - core transformations."""

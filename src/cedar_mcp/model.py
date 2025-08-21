@@ -53,6 +53,24 @@ class FieldDefinition(BaseModel):
     )
 
 
+class ElementDefinition(BaseModel):
+    """
+    Represents a template element that can contain nested fields or other elements.
+    """
+
+    name: str = Field(..., description="Element name")
+    description: str = Field(..., description="Element description")
+    prefLabel: str = Field(..., description="Human-readable label")
+    datatype: str = Field(
+        "element", description="Data type (always 'element' for TemplateElements)"
+    )
+    configuration: FieldConfiguration = Field(..., description="Element configuration")
+    is_array: bool = Field(False, description="Whether this element represents an array")
+    children: List[Union["FieldDefinition", "ElementDefinition"]] = Field(
+        default_factory=list, description="Nested fields and elements"
+    )
+
+
 class SimplifiedTemplate(BaseModel):
     """
     Represents the complete simplified template structure.
@@ -60,4 +78,10 @@ class SimplifiedTemplate(BaseModel):
 
     type: str = Field("template", description="Template type")
     name: str = Field(..., description="Template name")
-    children: List[FieldDefinition] = Field(..., description="Template fields")
+    children: List[Union[FieldDefinition, ElementDefinition]] = Field(
+        ..., description="Template fields and elements"
+    )
+
+
+# Update forward references for self-referencing models
+ElementDefinition.model_rebuild()
