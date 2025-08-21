@@ -432,51 +432,6 @@ class TestTransformElement:
 
 
 @pytest.mark.integration
-class TestIsTemplateElement:
-    """Tests for _is_template_element function."""
-
-    def test_identifies_template_element(self):
-        """Test that template elements are correctly identified."""
-        from src.cedar_mcp.processing import _is_template_element
-
-        element_data = {
-            "@type": "https://schema.metadatacenter.org/core/TemplateElement",
-            "schema:name": "Test Element"
-        }
-        assert _is_template_element(element_data) is True
-
-    def test_identifies_array_element(self):
-        """Test that array elements are correctly identified."""
-        from src.cedar_mcp.processing import _is_template_element
-
-        array_data = {
-            "type": "array",
-            "items": {"@type": "https://schema.metadatacenter.org/core/TemplateElement"}
-        }
-        assert _is_template_element(array_data) is True
-
-    def test_identifies_template_field(self):
-        """Test that template fields are not identified as elements."""
-        from src.cedar_mcp.processing import _is_template_element
-
-        field_data = {
-            "@type": "https://schema.metadatacenter.org/core/TemplateField",
-            "schema:name": "Test Field"
-        }
-        assert _is_template_element(field_data) is False
-
-    def test_identifies_unknown_type(self):
-        """Test that unknown types are not identified as elements."""
-        from src.cedar_mcp.processing import _is_template_element
-
-        unknown_data = {
-            "@type": "some.other.type",
-            "schema:name": "Unknown"
-        }
-        assert _is_template_element(unknown_data) is False
-
-
-@pytest.mark.integration
 class TestCleanTemplateResponseNested:
     """Tests for clean_template_response function with nested structures."""
 

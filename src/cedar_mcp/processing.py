@@ -210,6 +210,7 @@ def _transform_field(
 ) -> FieldDefinition:
     """
     Transform a single field from input JSON-LD to output structure.
+    Handles both regular fields and arrays of fields.
 
     Args:
         field_name: Name of the field
@@ -218,27 +219,37 @@ def _transform_field(
     Returns:
         Transformed output field
     """
-    # Extract basic field information
+    # Check if this is an array of fields
+    is_field_array = (
+        field_data.get("type") == "array" 
+        and "items" in field_data 
+    )
+    
+    if is_field_array:
+        # For array fields, replace field data from the items structure
+        field_data = field_data["items"]
+
+    # Regular field processing
     name = field_data.get("schema:name", field_name)
     description = field_data.get("schema:description", "")
     pref_label = field_data.get("skos:prefLabel", name)
-
+    constraints = field_data.get("_valueConstraints", {})
+    
     # Determine datatype
     datatype = _determine_datatype(field_data)
-
-    # Extract configuration
-    constraints = field_data.get("_valueConstraints", {})
-    required = constraints.get("requiredValue", False)
-    configuration = FieldConfiguration(required=required)
-
+    
+    # Extract controlled term values
+    values = _extract_controlled_term_values(field_data, bioportal_api_key)
+    
+    # Extract default value
+    default = _extract_default_value(field_data)
+    
     # Extract regex if present
     regex = constraints.get("regex")
 
-    # Extract controlled term values
-    values = _extract_controlled_term_values(field_data, bioportal_api_key)
-
-    # Extract default value
-    default = _extract_default_value(field_data)
+    # Extract configuration
+    required = constraints.get("requiredValue", False)
+    configuration = FieldConfiguration(required=required)
 
     return FieldDefinition(
         name=name,
@@ -246,6 +257,7 @@ def _transform_field(
         prefLabel=pref_label,
         datatype=datatype,
         configuration=configuration,
+        is_array=is_field_array,
         regex=regex,
         default=default,
         values=values,
@@ -345,29 +357,6 @@ def _process_element_children(
     return children
 
 
-def _is_template_element(field_data: Dict[str, Any]) -> bool:
-    """
-    Determine if a field is actually a template element.
-
-    Args:
-        field_data: Field/element data from input JSON-LD
-    Returns:
-        True if it's a template element, False if it's a simple field
-    """
-    field_type = field_data.get("@type", "")
-    
-    # Direct TemplateElement
-    if field_type == "https://schema.metadatacenter.org/core/TemplateElement":
-        return True
-    
-    # Array - check what's inside the items
-    if field_data.get("type") == "array" and "items" in field_data:
-        items_type = field_data["items"].get("@type", "")
-        return items_type == "https://schema.metadatacenter.org/core/TemplateElement"
-    
-    return False
-
-
 def clean_template_response(
     template_data: Dict[str, Any], bioportal_api_key: str
 ) -> Dict[str, Any]:
@@ -415,10 +404,7 @@ def clean_template_response(
                         item_name, item_data, bioportal_api_key
                     )
                     output_children.append(field_child)
-                elif (
-                    item_type == "https://schema.metadatacenter.org/core/TemplateElement"
-                    or _is_template_element(item_data)
-                ):
+                elif item_type == "https://schema.metadatacenter.org/core/TemplateElement":
                     # It's a template element (possibly an array)
                     element_child = _transform_element(
                         item_name, item_data, bioportal_api_key
