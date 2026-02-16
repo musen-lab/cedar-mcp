@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .processing import clean_template_response, clean_template_instance_response
-from .external_api import search_instance_ids, get_instance
+from .external_api import search_instance_ids, get_instance, search_terms
 
 
 def main():
@@ -184,6 +184,41 @@ def main():
             response["errors"] = failed_instances
 
         return response
+
+    @mcp.tool()
+    def term_search(
+        search_string: str,
+        ontology_acronym: str,
+        branch_iri: str,
+    ) -> Dict[str, Any]:
+        """
+        Search BioPortal for standardized ontology terms within a specific branch.
+
+        Use this tool to find the correct standardized name and IRI for a given
+        term label within a specific ontology branch.
+
+        Args:
+            search_string: The term label or keyword to search for
+                          (e.g., "aspirin", "glucose")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "CHEBI", "HRAVS")
+            branch_iri: IRI of the branch to restrict the search to
+                       (e.g., "http://purl.obolibrary.org/obo/CHEBI_23367")
+
+        Returns:
+            Search results from BioPortal containing matching terms
+        """
+        result = search_terms(
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+            branch_iri=branch_iri,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Term search failed: {result['error']}"}
+
+        return result
 
     # Start the MCP server
     print("Starting CEDAR MCP server...")

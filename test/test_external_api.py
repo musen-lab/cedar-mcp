@@ -6,6 +6,7 @@ from src.cedar_mcp.external_api import (
     get_children_from_branch,
     search_instance_ids,
     get_instance,
+    search_terms,
 )
 
 
@@ -200,3 +201,53 @@ class TestGetInstance:
         instance_id = "https://repo.metadatacenter.org/template-instances/test-id"
         result = get_instance(instance_id, "invalid-api-key")
         assert "error" in result
+
+
+@pytest.mark.integration
+class TestSearchTerms:
+    """Integration tests for search_terms function."""
+
+    def test_search_terms_successful(
+        self,
+        bioportal_api_key: str,
+        sample_bioportal_search_params: Dict[str, str],
+    ):
+        """Test searching for a known term returns results."""
+        result = search_terms(
+            search_string=sample_bioportal_search_params["search_string"],
+            ontology_acronym=sample_bioportal_search_params["ontology_acronym"],
+            branch_iri=sample_bioportal_search_params["branch_iri"],
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        # Should not contain error
+        assert "error" not in result
+
+        # Should have collection with results
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+
+        # Should find at least one result for "aspirin" in CHEBI
+        assert len(result["collection"]) > 0
+
+        # Each result should have expected fields
+        for item in result["collection"]:
+            assert "@id" in item
+            assert "prefLabel" in item
+            assert isinstance(item["prefLabel"], str)
+            assert item["prefLabel"].strip() != ""
+
+    def test_search_terms_invalid_api_key(
+        self,
+        sample_bioportal_search_params: Dict[str, str],
+    ):
+        """Test searching with invalid API key returns error."""
+        result = search_terms(
+            search_string=sample_bioportal_search_params["search_string"],
+            ontology_acronym=sample_bioportal_search_params["ontology_acronym"],
+            branch_iri=sample_bioportal_search_params["branch_iri"],
+            bioportal_api_key="invalid-api-key-12345",
+        )
+
+        assert "error" in result
+        assert "Failed to search BioPortal" in result["error"]
