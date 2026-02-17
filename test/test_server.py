@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pytest
+from typing import Dict
 from unittest.mock import patch
 import requests
 from src.cedar_mcp.external_api import search_instance_ids, get_instance
@@ -604,3 +605,141 @@ class TestGetInstancesBasedOnTemplate:
         # Verify we have cleaned instances
         assert len(cleaned_instances) > 0
         assert all(isinstance(inst, dict) for inst in cleaned_instances)
+
+
+@pytest.mark.integration
+class TestTermSearchFromBranch:
+    """Integration tests for term_search_from_branch MCP tool."""
+
+    def test_term_search_from_branch_successful(
+        self,
+        bioportal_api_key: str,
+        sample_bioportal_search_params: Dict[str, str],
+    ):
+        """Test term_search_from_branch returns results for a known term."""
+        from src.cedar_mcp.external_api import search_terms_from_branch
+
+        result = search_terms_from_branch(
+            search_string=sample_bioportal_search_params["search_string"],
+            ontology_acronym=sample_bioportal_search_params["ontology_acronym"],
+            branch_iri=sample_bioportal_search_params["branch_iri"],
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+        assert len(result["collection"]) > 0
+
+        # Verify result structure
+        first_result = result["collection"][0]
+        assert "@id" in first_result
+        assert "prefLabel" in first_result
+
+    def test_term_search_from_branch_empty_results(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test term_search_from_branch returns empty collection for nonsensical query."""
+        from src.cedar_mcp.external_api import search_terms_from_branch
+
+        result = search_terms_from_branch(
+            search_string="xyznonexistentterm12345",
+            ontology_acronym="CHEBI",
+            branch_iri="http://purl.obolibrary.org/obo/CHEBI_23367",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+        assert len(result["collection"]) == 0
+
+
+@pytest.mark.integration
+class TestTermSearchFromOntology:
+    """Integration tests for term_search_from_ontology MCP tool."""
+
+    def test_term_search_from_ontology_successful(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test term_search_from_ontology returns results for a known term."""
+        from src.cedar_mcp.external_api import search_terms_from_ontology
+
+        result = search_terms_from_ontology(
+            search_string="melanoma",
+            ontology_acronym="NCIT",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+        assert len(result["collection"]) > 0
+
+        # Verify result structure
+        first_result = result["collection"][0]
+        assert "@id" in first_result
+        assert "prefLabel" in first_result
+
+    def test_term_search_from_ontology_empty_results(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test term_search_from_ontology returns empty collection for nonsensical query."""
+        from src.cedar_mcp.external_api import search_terms_from_ontology
+
+        result = search_terms_from_ontology(
+            search_string="xyznonexistentterm12345",
+            ontology_acronym="NCIT",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+        assert len(result["collection"]) == 0
+
+
+@pytest.mark.integration
+class TestGetChildrenFromBranch:
+    """Integration tests for get_branch_children MCP tool."""
+
+    def test_get_children_successful(
+        self,
+        bioportal_api_key: str,
+        sample_bioportal_branch: Dict[str, str],
+    ):
+        """Test get_children_from_branch returns children for a known branch."""
+        from src.cedar_mcp.external_api import get_children_from_branch
+
+        result = get_children_from_branch(
+            branch_iri=sample_bioportal_branch["branch_iri"],
+            ontology_acronym=sample_bioportal_branch["ontology_acronym"],
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+        assert len(result["collection"]) > 0
+
+        # Verify result structure
+        first_result = result["collection"][0]
+        assert "prefLabel" in first_result
+
+    def test_get_children_invalid_branch(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test get_children_from_branch returns error for invalid branch IRI."""
+        from src.cedar_mcp.external_api import get_children_from_branch
+
+        result = get_children_from_branch(
+            branch_iri="http://example.org/nonexistent/branch",
+            ontology_acronym="CHEBI",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" in result
