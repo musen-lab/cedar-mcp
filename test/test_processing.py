@@ -82,9 +82,7 @@ class TestExtractPermissibleValueDefinitions:
         assert result[0].type == "literal"
         assert result[0].options == ["Option 1", "Option 2", "Option 3"]
 
-    def test_extract_class_values(
-        self, sample_field_data_with_classes: Dict[str, Any]
-    ):
+    def test_extract_class_values(self, sample_field_data_with_classes: Dict[str, Any]):
         """Test extraction of class constraints."""
         result = _extract_permissible_value_definitions(sample_field_data_with_classes)
 
@@ -113,7 +111,9 @@ class TestExtractPermissibleValueDefinitions:
         self, sample_field_data_with_ontologies: Dict[str, Any]
     ):
         """Test extraction of ontology constraints."""
-        result = _extract_permissible_value_definitions(sample_field_data_with_ontologies)
+        result = _extract_permissible_value_definitions(
+            sample_field_data_with_ontologies
+        )
 
         assert result is not None
         assert len(result) == 1
@@ -125,7 +125,9 @@ class TestExtractPermissibleValueDefinitions:
         self, sample_field_data_with_value_sets: Dict[str, Any]
     ):
         """Test extraction of valueSet constraints as OntologyConstraint."""
-        result = _extract_permissible_value_definitions(sample_field_data_with_value_sets)
+        result = _extract_permissible_value_definitions(
+            sample_field_data_with_value_sets
+        )
 
         assert result is not None
         assert len(result) == 1
@@ -269,7 +271,11 @@ class TestTransformField:
         assert result.permissible_values is not None
         assert len(result.permissible_values) == 1
         assert isinstance(result.permissible_values[0], LiteralConstraint)
-        assert result.permissible_values[0].options == ["Option 1", "Option 2", "Option 3"]
+        assert result.permissible_values[0].options == [
+            "Option 1",
+            "Option 2",
+            "Option 3",
+        ]
 
     def test_transform_field_with_branches(
         self, sample_field_data_with_branches: Dict[str, Any]
@@ -305,9 +311,7 @@ class TestTransformField:
 class TestCleanTemplateResponse:
     """Tests for clean_template_response function."""
 
-    def test_clean_minimal_template(
-        self, sample_minimal_template_data: Dict[str, Any]
-    ):
+    def test_clean_minimal_template(self, sample_minimal_template_data: Dict[str, Any]):
         """Test cleaning of minimal template data."""
         result = clean_template_response(sample_minimal_template_data)
 
@@ -368,9 +372,7 @@ class TestTransformElement:
         from src.cedar_mcp.processing import _transform_element
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
-        result = _transform_element(
-            "resource_type", sample_nested_template_element
-        )
+        result = _transform_element("resource_type", sample_nested_template_element)
 
         assert isinstance(result, ElementDefinition)
         assert result.name == "Resource Type"
@@ -396,9 +398,7 @@ class TestTransformElement:
         from src.cedar_mcp.processing import _transform_element
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
-        result = _transform_element(
-            "data_file_title", sample_array_template_element
-        )
+        result = _transform_element("data_file_title", sample_array_template_element)
 
         assert isinstance(result, ElementDefinition)
         assert result.name == "Data File Title"
@@ -638,9 +638,7 @@ class TestCleanTemplateResponseArrayFields:
             == "Additional notes or comments about the resource."
         )
 
-    def test_array_field_properties(
-        self, sample_array_template_field: Dict[str, Any]
-    ):
+    def test_array_field_properties(self, sample_array_template_field: Dict[str, Any]):
         """Test that array field properties are correctly extracted from items structure."""
         template_data = {
             "schema:name": "Array Field Test",

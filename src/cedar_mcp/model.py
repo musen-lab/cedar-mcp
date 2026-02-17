@@ -66,7 +66,6 @@ class ControlledTermDefault(BaseModel):
     iri: str = Field(..., description="Default IRI/URI")
 
 
-
 class FieldDefinition(BaseModel):
     """
     Represents a field in the output template.
@@ -75,14 +74,14 @@ class FieldDefinition(BaseModel):
     name: str = Field(..., description="Field name")
     description: str = Field(..., description="Field description")
     label: str = Field(..., description="Human-readable label")
-    type: str = Field(
-        ..., description="Data type (string, integer, decimal, boolean)"
-    )
+    type: str = Field(..., description="Data type (string, integer, decimal, boolean)")
     required: bool = Field(False, description="Whether the field is required")
-    multivalued: bool = Field(False, description="Whether this field represents an array")
+    multivalued: bool = Field(
+        False, description="Whether this field represents an array"
+    )
     pattern: Optional[str] = Field(None, description="Validation regex pattern")
-    default_value: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
-        None, description="Default value"
+    default_value: Optional[Union[ControlledTermDefault, str, int, float, bool]] = (
+        Field(None, description="Default value")
     )
     permissible_values: Optional[List[ValueConstraint]] = Field(
         None, description="Value constraints for controlled term fields"

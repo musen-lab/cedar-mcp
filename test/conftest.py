@@ -70,7 +70,10 @@ def sample_field_data_with_ontologies() -> Dict[str, Any]:
         "_valueConstraints": {
             "requiredValue": False,
             "ontologies": [
-                {"acronym": "CHEBI", "name": "Chemical Entities of Biological Interest"},
+                {
+                    "acronym": "CHEBI",
+                    "name": "Chemical Entities of Biological Interest",
+                },
                 {"acronym": "GO", "name": "Gene Ontology"},
             ],
         },
@@ -88,7 +91,10 @@ def sample_field_data_with_value_sets() -> Dict[str, Any]:
         "_valueConstraints": {
             "requiredValue": False,
             "valueSets": [
-                {"name": "HRAVS", "uri": "https://bioportal.bioontology.org/ontologies/HRAVS"},
+                {
+                    "name": "HRAVS",
+                    "uri": "https://bioportal.bioontology.org/ontologies/HRAVS",
+                },
             ],
         },
         "@type": "https://schema.metadatacenter.org/core/TemplateField",

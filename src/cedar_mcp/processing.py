@@ -99,9 +99,7 @@ def _extract_permissible_value_definitions(
     # Handle ontologies
     if ontologies:
         acronyms = [
-            o["acronym"]
-            for o in ontologies
-            if isinstance(o, dict) and "acronym" in o
+            o["acronym"] for o in ontologies if isinstance(o, dict) and "acronym" in o
         ]
         if acronyms:
             result.append(OntologyConstraint(ontology_acronyms=acronyms))
@@ -109,9 +107,7 @@ def _extract_permissible_value_definitions(
     # Handle valueSets — fold into OntologyConstraint by extracting acronyms
     if value_sets:
         vs_acronyms = [
-            vs["name"]
-            for vs in value_sets
-            if isinstance(vs, dict) and "name" in vs
+            vs["name"] for vs in value_sets if isinstance(vs, dict) and "name" in vs
         ]
         if vs_acronyms:
             result.append(OntologyConstraint(ontology_acronyms=vs_acronyms))
@@ -128,11 +124,7 @@ def _extract_permissible_value_definitions(
 
     # Handle branches
     for branch in branches:
-        if (
-            isinstance(branch, dict)
-            and "uri" in branch
-            and "acronym" in branch
-        ):
+        if isinstance(branch, dict) and "uri" in branch and "acronym" in branch:
             result.append(
                 BranchConstraint(
                     ontology_acronym=branch["acronym"],
@@ -180,9 +172,7 @@ def _extract_default_value(
     return None
 
 
-def _transform_field(
-    field_name: str, field_data: Dict[str, Any]
-) -> FieldDefinition:
+def _transform_field(field_name: str, field_data: Dict[str, Any]) -> FieldDefinition:
     """
     Transform a single field from input JSON-LD to output structure.
     Handles both regular fields and arrays of fields.

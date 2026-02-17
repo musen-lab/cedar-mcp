@@ -50,6 +50,7 @@ class TestGetTemplate:
 
                 # Test that cleaning function works with real data
                 from src.cedar_mcp.processing import clean_template_response
+
                 cleaned_data = clean_template_response(template_data)
                 # Verify cleaned response structure
                 assert isinstance(cleaned_data, dict)
