@@ -16,7 +16,7 @@ from .model import (
 )
 
 
-def _determine_datatype(field_data: Dict[str, Any]) -> str:
+def _extract_datatype(field_data: Dict[str, Any]) -> str:
     """
     Determine the appropriate datatype for a field based on its properties.
 
@@ -53,7 +53,7 @@ def _determine_datatype(field_data: Dict[str, Any]) -> str:
     return "string"
 
 
-def _extract_controlled_term_values(
+def _extract_permissible_value_definitions(
     field_data: Dict[str, Any],
 ) -> Optional[List[ValueConstraint]]:
     """
@@ -208,10 +208,10 @@ def _transform_field(
     constraints = field_data.get("_valueConstraints", {})
 
     # Determine datatype
-    datatype = _determine_datatype(field_data)
+    datatype = _extract_datatype(field_data)
 
     # Extract controlled term values
-    values = _extract_controlled_term_values(field_data)
+    values = _extract_permissible_value_definitions(field_data)
 
     # Extract default value
     default = _extract_default_value(field_data)
@@ -230,7 +230,7 @@ def _transform_field(
         is_array=is_field_array,
         regex=regex,
         default=default,
-        values=values,
+        permissible_values=values,
     )
 
 

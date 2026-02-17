@@ -84,7 +84,7 @@ class FieldDefinition(BaseModel):
     default: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
         None, description="Default value"
     )
-    values: Optional[List[ValueConstraint]] = Field(
+    permissible_values: Optional[List[ValueConstraint]] = Field(
         None, description="Value constraints for controlled term fields"
     )
 

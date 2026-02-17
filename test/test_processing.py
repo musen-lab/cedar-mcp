@@ -3,8 +3,8 @@
 import pytest
 from typing import Dict, Any
 from src.cedar_mcp.processing import (
-    _determine_datatype,
-    _extract_controlled_term_values,
+    _extract_datatype,
+    _extract_permissible_value_definitions,
     _extract_default_value,
     _transform_field,
     clean_template_response,
@@ -21,60 +21,60 @@ from src.cedar_mcp.model import (
 
 
 @pytest.mark.unit
-class TestDetermineDatatype:
-    """Tests for _determine_datatype function."""
+class TestExtractDatatype:
+    """Tests for _extract_datatype function."""
 
     def test_string_datatype_default(self):
         """Test that string is returned as default datatype."""
         field_data = {"properties": {"@value": {}}}
-        result = _determine_datatype(field_data)
+        result = _extract_datatype(field_data)
         assert result == "string"
 
     def test_integer_datatype(self):
         """Test integer datatype detection."""
         field_data = {"properties": {"@value": {"type": "integer"}}}
-        result = _determine_datatype(field_data)
+        result = _extract_datatype(field_data)
         assert result == "integer"
 
     def test_decimal_datatype(self):
         """Test decimal datatype detection."""
         field_data = {"properties": {"@value": {"type": "number"}}}
-        result = _determine_datatype(field_data)
+        result = _extract_datatype(field_data)
         assert result == "decimal"
 
     def test_boolean_datatype(self):
         """Test boolean datatype detection."""
         field_data = {"properties": {"@value": {"type": "boolean"}}}
-        result = _determine_datatype(field_data)
+        result = _extract_datatype(field_data)
         assert result == "boolean"
 
     def test_list_type_integer(self):
         """Test integer datatype from list type."""
         field_data = {"properties": {"@value": {"type": ["string", "integer"]}}}
-        result = _determine_datatype(field_data)
+        result = _extract_datatype(field_data)
         assert result == "integer"
 
     def test_list_type_number(self):
         """Test decimal datatype from list type."""
         field_data = {"properties": {"@value": {"type": ["string", "number"]}}}
-        result = _determine_datatype(field_data)
+        result = _extract_datatype(field_data)
         assert result == "decimal"
 
     def test_empty_field_data(self):
         """Test handling of empty field data."""
-        result = _determine_datatype({})
+        result = _extract_datatype({})
         assert result == "string"
 
 
 @pytest.mark.unit
-class TestExtractControlledTermValues:
-    """Tests for _extract_controlled_term_values function."""
+class TestExtractPermissibleValueDefinitions:
+    """Tests for _extract_permissible_value_definitions function."""
 
     def test_extract_literal_values(
         self, sample_field_data_with_literals: Dict[str, Any]
     ):
         """Test extraction of literal constraints."""
-        result = _extract_controlled_term_values(sample_field_data_with_literals)
+        result = _extract_permissible_value_definitions(sample_field_data_with_literals)
 
         assert result is not None
         assert len(result) == 1
@@ -86,7 +86,7 @@ class TestExtractControlledTermValues:
         self, sample_field_data_with_classes: Dict[str, Any]
     ):
         """Test extraction of class constraints."""
-        result = _extract_controlled_term_values(sample_field_data_with_classes)
+        result = _extract_permissible_value_definitions(sample_field_data_with_classes)
 
         assert result is not None
         assert len(result) == 1
@@ -100,7 +100,7 @@ class TestExtractControlledTermValues:
         self, sample_field_data_with_branches: Dict[str, Any]
     ):
         """Test extraction of branch constraints."""
-        result = _extract_controlled_term_values(sample_field_data_with_branches)
+        result = _extract_permissible_value_definitions(sample_field_data_with_branches)
 
         assert result is not None
         assert len(result) == 1
@@ -113,7 +113,7 @@ class TestExtractControlledTermValues:
         self, sample_field_data_with_ontologies: Dict[str, Any]
     ):
         """Test extraction of ontology constraints."""
-        result = _extract_controlled_term_values(sample_field_data_with_ontologies)
+        result = _extract_permissible_value_definitions(sample_field_data_with_ontologies)
 
         assert result is not None
         assert len(result) == 1
@@ -125,7 +125,7 @@ class TestExtractControlledTermValues:
         self, sample_field_data_with_value_sets: Dict[str, Any]
     ):
         """Test extraction of valueSet constraints as OntologyConstraint."""
-        result = _extract_controlled_term_values(sample_field_data_with_value_sets)
+        result = _extract_permissible_value_definitions(sample_field_data_with_value_sets)
 
         assert result is not None
         assert len(result) == 1
@@ -136,7 +136,7 @@ class TestExtractControlledTermValues:
     def test_no_constraints_returns_none(self):
         """Test that fields without constraints return None."""
         field_data = {"schema:name": "Simple Field", "_valueConstraints": {}}
-        result = _extract_controlled_term_values(field_data)
+        result = _extract_permissible_value_definitions(field_data)
         assert result is None
 
     def test_extract_mixed_constraints(self):
@@ -156,7 +156,7 @@ class TestExtractControlledTermValues:
             }
         }
 
-        result = _extract_controlled_term_values(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert len(result) == 2
@@ -256,7 +256,7 @@ class TestTransformField:
         assert result.prefLabel == "Test Field Label"
         assert result.datatype == "string"
         assert result.required is True
-        assert result.values is None
+        assert result.permissible_values is None
         assert result.default is None
 
     def test_transform_field_with_literals(
@@ -266,10 +266,10 @@ class TestTransformField:
         result = _transform_field("literal_field", sample_field_data_with_literals)
 
         assert isinstance(result, FieldDefinition)
-        assert result.values is not None
-        assert len(result.values) == 1
-        assert isinstance(result.values[0], LiteralConstraint)
-        assert result.values[0].options == ["Option 1", "Option 2", "Option 3"]
+        assert result.permissible_values is not None
+        assert len(result.permissible_values) == 1
+        assert isinstance(result.permissible_values[0], LiteralConstraint)
+        assert result.permissible_values[0].options == ["Option 1", "Option 2", "Option 3"]
 
     def test_transform_field_with_branches(
         self, sample_field_data_with_branches: Dict[str, Any]
@@ -278,10 +278,10 @@ class TestTransformField:
         result = _transform_field("branch_field", sample_field_data_with_branches)
 
         assert isinstance(result, FieldDefinition)
-        assert result.values is not None
-        assert len(result.values) == 1
-        assert isinstance(result.values[0], BranchConstraint)
-        assert result.values[0].ontology_acronym == "CHEBI"
+        assert result.permissible_values is not None
+        assert len(result.permissible_values) == 1
+        assert isinstance(result.permissible_values[0], BranchConstraint)
+        assert result.permissible_values[0].ontology_acronym == "CHEBI"
 
     def test_transform_field_with_regex(self):
         """Test transformation of field with regex constraint."""
