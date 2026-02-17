@@ -16,6 +16,7 @@ from .external_api import (
     get_instance,
     search_instance_ids,
     search_terms_from_branch,
+    search_terms_from_ontology,
 )
 
 
@@ -217,6 +218,37 @@ def main():
             search_string=search_string,
             ontology_acronym=ontology_acronym,
             branch_iri=branch_iri,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Term search failed: {result['error']}"}
+
+        return result
+
+    @mcp.tool()
+    def term_search_from_ontology(
+        search_string: str,
+        ontology_acronym: str,
+    ) -> Dict[str, Any]:
+        """
+        Search BioPortal for standardized ontology terms within an entire ontology.
+
+        Use this tool to find the correct standardized name and IRI for a given
+        term label across an entire ontology (not restricted to a specific branch).
+
+        Args:
+            search_string: The term label or keyword to search for
+                          (e.g., "melanoma", "diabetes")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "NCIT", "CHEBI", "DOID")
+
+        Returns:
+            Search results from BioPortal containing matching terms
+        """
+        result = search_terms_from_ontology(
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
             bioportal_api_key=BIOPORTAL_API_KEY,
         )
 
