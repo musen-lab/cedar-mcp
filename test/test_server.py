@@ -307,8 +307,8 @@ class TestEndToEndWorkflow:
                 for field in cleaned_template["children"]:
                     assert "name" in field
                     assert "description" in field
-                    assert "prefLabel" in field
-                    assert "datatype" in field
+                    assert "label" in field
+                    assert "type" in field
                     assert "required" in field
                     assert isinstance(field["required"], bool)
 

@@ -253,11 +253,11 @@ class TestTransformField:
         assert isinstance(result, FieldDefinition)
         assert result.name == "Test Field"
         assert result.description == "A test field"
-        assert result.prefLabel == "Test Field Label"
-        assert result.datatype == "string"
+        assert result.label == "Test Field Label"
+        assert result.type == "string"
         assert result.required is True
         assert result.permissible_values is None
-        assert result.default is None
+        assert result.default_value is None
 
     def test_transform_field_with_literals(
         self, sample_field_data_with_literals: Dict[str, Any]
@@ -298,7 +298,7 @@ class TestTransformField:
 
         result = _transform_field("email_field", field_data)
 
-        assert result.regex == r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        assert result.pattern == r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 
 @pytest.mark.unit
@@ -378,9 +378,9 @@ class TestTransformElement:
             result.description
             == "Information about the type of the resource being described with metadata."
         )
-        assert result.prefLabel == "Resource Type"
-        assert result.datatype == "element"
-        assert result.is_array is False
+        assert result.label == "Resource Type"
+        assert result.type == "element"
+        assert result.multivalued is False
         assert len(result.children) == 2
 
         # Check that children are fields
@@ -402,8 +402,8 @@ class TestTransformElement:
 
         assert isinstance(result, ElementDefinition)
         assert result.name == "Data File Title"
-        assert result.datatype == "element"
-        assert result.is_array is True
+        assert result.type == "element"
+        assert result.multivalued is True
         assert len(result.children) == 2
 
         # Check that children are fields from the items structure
@@ -470,8 +470,8 @@ class TestCleanTemplateResponseNested:
 
         element = result["children"][0]
         assert element["name"] == "Resource Type"
-        assert element["datatype"] == "element"
-        assert element["is_array"] is False
+        assert element["type"] == "element"
+        assert element["multivalued"] is False
         assert len(element["children"]) == 2
 
         # Verify nested fields
@@ -497,8 +497,8 @@ class TestCleanTemplateResponseNested:
 
         element = result["children"][0]
         assert element["name"] == "Data File Title"
-        assert element["datatype"] == "element"
-        assert element["is_array"] is True
+        assert element["type"] == "element"
+        assert element["multivalued"] is True
         assert len(element["children"]) == 2
 
         # Verify nested fields from array items
@@ -521,25 +521,25 @@ class TestCleanTemplateResponseNested:
 
         # Simple field
         simple_field = children_by_name["Simple Field"]
-        assert simple_field["datatype"] == "string"
+        assert simple_field["type"] == "string"
         assert "children" not in simple_field
 
         # Template element
         resource_type = children_by_name["Resource Type"]
-        assert resource_type["datatype"] == "element"
-        assert resource_type["is_array"] is False
+        assert resource_type["type"] == "element"
+        assert resource_type["multivalued"] is False
         assert len(resource_type["children"]) == 2
 
         # Array element
         title_array = children_by_name["Data File Title"]
-        assert title_array["datatype"] == "element"
-        assert title_array["is_array"] is True
+        assert title_array["type"] == "element"
+        assert title_array["multivalued"] is True
         assert len(title_array["children"]) == 2
 
         # Nested array element
         spatial_coverage = children_by_name["Data File Spatial Coverage"]
-        assert spatial_coverage["datatype"] == "element"
-        assert spatial_coverage["is_array"] is True
+        assert spatial_coverage["type"] == "element"
+        assert spatial_coverage["multivalued"] is True
         assert len(spatial_coverage["children"]) == 3
 
         # Check that nested coverage is also an array element
@@ -547,8 +547,8 @@ class TestCleanTemplateResponseNested:
             child["name"]: child for child in spatial_coverage["children"]
         }
         nested_coverage = nested_children_by_name["Nested Coverage"]
-        assert nested_coverage["datatype"] == "element"
-        assert nested_coverage["is_array"] is True
+        assert nested_coverage["type"] == "element"
+        assert nested_coverage["multivalued"] is True
         assert len(nested_coverage["children"]) == 2
 
     def test_mixed_fields_and_elements(self):
@@ -591,14 +591,14 @@ class TestCleanTemplateResponseNested:
         # First child should be a simple field
         simple_child = result["children"][0]
         assert simple_child["name"] == "Simple Field"
-        assert simple_child["datatype"] == "string"
+        assert simple_child["type"] == "string"
         assert "children" not in simple_child
 
         # Second child should be an element with nested field
         complex_child = result["children"][1]
         assert complex_child["name"] == "Complex Element"
-        assert complex_child["datatype"] == "element"
-        assert complex_child["is_array"] is False
+        assert complex_child["type"] == "element"
+        assert complex_child["multivalued"] is False
         assert len(complex_child["children"]) == 1
         assert complex_child["children"][0]["name"] == "Nested Field"
         assert complex_child["children"][0]["required"] is True
@@ -623,15 +623,15 @@ class TestCleanTemplateResponseArrayFields:
 
         # Simple field should not be array
         simple_field = children_by_name["Simple Field"]
-        assert simple_field["datatype"] == "string"
-        assert simple_field["is_array"] is False
+        assert simple_field["type"] == "string"
+        assert simple_field["multivalued"] is False
         assert "children" not in simple_field
 
         # Array field should be marked as array
         array_field = children_by_name["Notes"]
         assert array_field["name"] == "Notes"
-        assert array_field["datatype"] == "string"
-        assert array_field["is_array"] is True
+        assert array_field["type"] == "string"
+        assert array_field["multivalued"] is True
         assert "children" not in array_field
         assert (
             array_field["description"]
@@ -659,9 +659,9 @@ class TestCleanTemplateResponseArrayFields:
             array_field["description"]
             == "Additional notes or comments about the resource."
         )
-        assert array_field["prefLabel"] == "Notes"
-        assert array_field["datatype"] == "string"
-        assert array_field["is_array"] is True
+        assert array_field["label"] == "Notes"
+        assert array_field["type"] == "string"
+        assert array_field["multivalued"] is True
         assert array_field["required"] is False
 
     def test_mixed_array_fields_and_elements(self):
@@ -711,14 +711,14 @@ class TestCleanTemplateResponseArrayFields:
 
         # Array field should be a simple array field
         notes_array = children_by_name["Notes"]
-        assert notes_array["datatype"] == "string"
-        assert notes_array["is_array"] is True
+        assert notes_array["type"] == "string"
+        assert notes_array["multivalued"] is True
         assert "children" not in notes_array
 
         # Array element should be an array element with children
         elements_array = children_by_name["Complex Item"]
-        assert elements_array["datatype"] == "element"
-        assert elements_array["is_array"] is True
+        assert elements_array["type"] == "element"
+        assert elements_array["multivalued"] is True
         assert len(elements_array["children"]) == 1
         assert elements_array["children"][0]["name"] == "Inner Field"
 

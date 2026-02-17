@@ -74,14 +74,14 @@ class FieldDefinition(BaseModel):
 
     name: str = Field(..., description="Field name")
     description: str = Field(..., description="Field description")
-    prefLabel: str = Field(..., description="Human-readable label")
-    datatype: str = Field(
+    label: str = Field(..., description="Human-readable label")
+    type: str = Field(
         ..., description="Data type (string, integer, decimal, boolean)"
     )
     required: bool = Field(False, description="Whether the field is required")
-    is_array: bool = Field(False, description="Whether this field represents an array")
-    regex: Optional[str] = Field(None, description="Validation regex pattern")
-    default: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
+    multivalued: bool = Field(False, description="Whether this field represents an array")
+    pattern: Optional[str] = Field(None, description="Validation regex pattern")
+    default_value: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
         None, description="Default value"
     )
     permissible_values: Optional[List[ValueConstraint]] = Field(
@@ -96,12 +96,12 @@ class ElementDefinition(BaseModel):
 
     name: str = Field(..., description="Element name")
     description: str = Field(..., description="Element description")
-    prefLabel: str = Field(..., description="Human-readable label")
-    datatype: str = Field(
+    label: str = Field(..., description="Human-readable label")
+    type: str = Field(
         "element", description="Data type (always 'element' for TemplateElements)"
     )
     required: bool = Field(False, description="Whether the element is required")
-    is_array: bool = Field(
+    multivalued: bool = Field(
         False, description="Whether this element represents an array"
     )
     children: List[Union["FieldDefinition", "ElementDefinition"]] = Field(

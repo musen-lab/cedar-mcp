@@ -204,33 +204,33 @@ def _transform_field(
     # Regular field processing
     name = field_data.get("schema:name", field_name)
     description = field_data.get("schema:description", "")
-    pref_label = field_data.get("skos:prefLabel", name)
+    label = field_data.get("skos:prefLabel", name)
     constraints = field_data.get("_valueConstraints", {})
 
     # Determine datatype
-    datatype = _extract_datatype(field_data)
+    type = _extract_datatype(field_data)
 
     # Extract controlled term values
-    values = _extract_permissible_value_definitions(field_data)
+    permissible_values = _extract_permissible_value_definitions(field_data)
 
     # Extract default value
-    default = _extract_default_value(field_data)
+    default_value = _extract_default_value(field_data)
 
     # Extract regex if present
-    regex = constraints.get("regex")
+    pattern = constraints.get("regex")
 
     # Extract configuration
     required = constraints.get("requiredValue", False)
     return FieldDefinition(
         name=name,
         description=description,
-        prefLabel=pref_label,
-        datatype=datatype,
+        label=label,
+        type=type,
         required=required,
-        is_array=is_field_array,
-        regex=regex,
-        default=default,
-        permissible_values=values,
+        multivalued=is_field_array,
+        pattern=pattern,
+        default_value=default_value,
+        permissible_values=permissible_values,
     )
 
 
@@ -274,10 +274,10 @@ def _transform_element(
     return ElementDefinition(
         name=name,
         description=description,
-        prefLabel=pref_label,
-        datatype="element",
+        label=pref_label,
+        type="element",
         required=required,
-        is_array=is_array,
+        multivalued=is_array,
         children=children_list,
     )
 
