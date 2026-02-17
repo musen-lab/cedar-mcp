@@ -7,7 +7,6 @@ import requests
 from src.cedar_mcp.external_api import search_instance_ids, get_instance
 import sys
 import io
-import os
 
 
 @pytest.mark.integration
@@ -51,12 +50,7 @@ class TestGetTemplate:
 
                 # Test that cleaning function works with real data
                 from src.cedar_mcp.processing import clean_template_response
-                from dotenv import load_dotenv
-
-                load_dotenv(".env.test")
-                bioportal_api_key = os.getenv("BIOPORTAL_API_KEY")
-
-                cleaned_data = clean_template_response(template_data, bioportal_api_key)
+                cleaned_data = clean_template_response(template_data)
                 # Verify cleaned response structure
                 assert isinstance(cleaned_data, dict)
                 assert cleaned_data["type"] == "template"
@@ -279,11 +273,6 @@ class TestEndToEndWorkflow:
         self, cedar_api_key: str, sample_cedar_template_id: str
     ):
         """Test complete workflow from CEDAR API to cleaned template."""
-        from dotenv import load_dotenv
-
-        load_dotenv(".env.test")
-        bioportal_api_key = os.getenv("BIOPORTAL_API_KEY")
-
         # Step 1: Fetch from CEDAR API
         headers = {
             "Accept": "application/json",
@@ -305,7 +294,7 @@ class TestEndToEndWorkflow:
             # Step 2: Clean and transform template
             from src.cedar_mcp.processing import clean_template_response
 
-            cleaned_template = clean_template_response(raw_template, bioportal_api_key)
+            cleaned_template = clean_template_response(raw_template)
 
             # Step 3: Verify complete transformation
             assert isinstance(cleaned_template, dict)
@@ -487,15 +476,10 @@ class TestEndToEndWorkflow:
             pytest.fail(f"End-to-end template instance workflow failed: {str(e)}")
 
     @pytest.mark.slow
-    def test_template_with_bioportal_integration(
+    def test_template_with_value_constraints(
         self, cedar_api_key: str, sample_cedar_template_id: str
     ):
-        """Test template processing that requires BioPortal integration."""
-        from dotenv import load_dotenv
-
-        load_dotenv(".env.test")
-        bioportal_api_key = os.getenv("BIOPORTAL_API_KEY")
-
+        """Test template processing returns properly structured value constraints."""
         # Fetch a real template
         headers = {
             "Accept": "application/json",
@@ -514,12 +498,11 @@ class TestEndToEndWorkflow:
             response.raise_for_status()
             raw_template = response.json()
 
-            # Process with BioPortal integration
             from src.cedar_mcp.processing import clean_template_response
 
-            cleaned_template = clean_template_response(raw_template, bioportal_api_key)
+            cleaned_template = clean_template_response(raw_template)
 
-            # Look for fields that might have used BioPortal
+            # Look for fields with value constraints
             fields_with_values = [
                 field
                 for field in cleaned_template.get("children", [])
@@ -528,18 +511,32 @@ class TestEndToEndWorkflow:
 
             # If there are controlled term fields, verify they're properly structured
             for field in fields_with_values:
-                for value in field["values"]:
-                    assert "label" in value
-                    assert isinstance(value["label"], str)
-                    assert len(value["label"].strip()) > 0
+                for constraint in field["values"]:
+                    assert "type" in constraint
+                    assert constraint["type"] in {
+                        "literal",
+                        "ontology",
+                        "class",
+                        "branch",
+                    }
 
-                    # IRI is optional (None for literals)
-                    if "iri" in value and value["iri"] is not None:
-                        assert isinstance(value["iri"], str)
-                        assert value["iri"].startswith("http")
+                    if constraint["type"] == "literal":
+                        assert "options" in constraint
+                        assert isinstance(constraint["options"], list)
+                    elif constraint["type"] == "ontology":
+                        assert "ontology_acronyms" in constraint
+                        assert isinstance(constraint["ontology_acronyms"], list)
+                    elif constraint["type"] == "class":
+                        assert "options" in constraint
+                        for opt in constraint["options"]:
+                            assert "label" in opt
+                            assert "term_iri" in opt
+                    elif constraint["type"] == "branch":
+                        assert "ontology_acronym" in constraint
+                        assert "branch_iri" in constraint
 
         except requests.exceptions.RequestException as e:
-            pytest.fail(f"BioPortal integration test failed: {str(e)}")
+            pytest.fail(f"Value constraints integration test failed: {str(e)}")
 
 
 @pytest.mark.integration

@@ -61,6 +61,41 @@ def sample_bioportal_search_params() -> Dict[str, str]:
 
 
 @pytest.fixture
+def sample_field_data_with_ontologies() -> Dict[str, Any]:
+    """Sample field data containing ontology constraints for testing."""
+    return {
+        "schema:name": "Test Ontology Field",
+        "schema:description": "A test field with ontology constraints",
+        "skos:prefLabel": "Test Ontology Field Label",
+        "_valueConstraints": {
+            "requiredValue": False,
+            "ontologies": [
+                {"acronym": "CHEBI", "name": "Chemical Entities of Biological Interest"},
+                {"acronym": "GO", "name": "Gene Ontology"},
+            ],
+        },
+        "@type": "https://schema.metadatacenter.org/core/TemplateField",
+    }
+
+
+@pytest.fixture
+def sample_field_data_with_value_sets() -> Dict[str, Any]:
+    """Sample field data containing valueSet constraints for testing."""
+    return {
+        "schema:name": "Test ValueSet Field",
+        "schema:description": "A test field with valueSet constraints",
+        "skos:prefLabel": "Test ValueSet Field Label",
+        "_valueConstraints": {
+            "requiredValue": False,
+            "valueSets": [
+                {"name": "HRAVS", "uri": "https://bioportal.bioontology.org/ontologies/HRAVS"},
+            ],
+        },
+        "@type": "https://schema.metadatacenter.org/core/TemplateField",
+    }
+
+
+@pytest.fixture
 def sample_field_data_with_branches() -> Dict[str, Any]:
     """Sample field data containing branch constraints for testing."""
     return {

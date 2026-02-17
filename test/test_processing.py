@@ -11,9 +11,12 @@ from src.cedar_mcp.processing import (
     clean_template_instance_response,
 )
 from src.cedar_mcp.model import (
-    ControlledTermValue,
+    BranchConstraint,
+    ClassConstraint,
     ControlledTermDefault,
     FieldDefinition,
+    LiteralConstraint,
+    OntologyConstraint,
 )
 
 
@@ -63,76 +66,81 @@ class TestDetermineDatatype:
         assert result == "string"
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestExtractControlledTermValues:
     """Tests for _extract_controlled_term_values function."""
 
     def test_extract_literal_values(
-        self, bioportal_api_key: str, sample_field_data_with_literals: Dict[str, Any]
+        self, sample_field_data_with_literals: Dict[str, Any]
     ):
-        """Test extraction of literal controlled term values."""
-        result = _extract_controlled_term_values(
-            sample_field_data_with_literals, bioportal_api_key
-        )
-
-        assert result is not None
-        assert len(result) == 3
-        assert all(isinstance(value, ControlledTermValue) for value in result)
-        assert all(value.iri is None for value in result)  # Literals have no IRI
-
-        labels = [value.label for value in result]
-        assert "Option 1" in labels
-        assert "Option 2" in labels
-        assert "Option 3" in labels
-
-    def test_extract_class_values(
-        self, bioportal_api_key: str, sample_field_data_with_classes: Dict[str, Any]
-    ):
-        """Test extraction of class controlled term values."""
-        result = _extract_controlled_term_values(
-            sample_field_data_with_classes, bioportal_api_key
-        )
+        """Test extraction of literal constraints."""
+        result = _extract_controlled_term_values(sample_field_data_with_literals)
 
         assert result is not None
         assert len(result) == 1
-        assert result[0].label == "Sample Class"
-        assert result[0].iri == "http://example.org/sample-class"
+        assert isinstance(result[0], LiteralConstraint)
+        assert result[0].type == "literal"
+        assert result[0].options == ["Option 1", "Option 2", "Option 3"]
+
+    def test_extract_class_values(
+        self, sample_field_data_with_classes: Dict[str, Any]
+    ):
+        """Test extraction of class constraints."""
+        result = _extract_controlled_term_values(sample_field_data_with_classes)
+
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], ClassConstraint)
+        assert result[0].type == "class"
+        assert len(result[0].options) == 1
+        assert result[0].options[0].label == "Sample Class"
+        assert result[0].options[0].term_iri == "http://example.org/sample-class"
 
     def test_extract_branch_values(
-        self, bioportal_api_key: str, sample_field_data_with_branches: Dict[str, Any]
-    ):
-        """Test extraction of branch controlled term values using real BioPortal API."""
-        result = _extract_controlled_term_values(
-            sample_field_data_with_branches, bioportal_api_key
-        )
-
-        # Result depends on actual BioPortal data
-        if result is not None:
-            assert all(isinstance(value, ControlledTermValue) for value in result)
-            assert all(
-                value.iri is not None for value in result
-            )  # Branch children have IRIs
-            assert all(value.label.strip() != "" for value in result)
-
-    def test_no_constraints_returns_none(self, bioportal_api_key: str):
-        """Test that fields without constraints return None."""
-        field_data = {"schema:name": "Simple Field", "_valueConstraints": {}}
-        result = _extract_controlled_term_values(field_data, bioportal_api_key)
-        assert result is None
-
-    def test_invalid_api_key_handles_gracefully(
         self, sample_field_data_with_branches: Dict[str, Any]
     ):
-        """Test that invalid API key is handled gracefully for branches."""
-        result = _extract_controlled_term_values(
-            sample_field_data_with_branches, "invalid-key"
-        )
+        """Test extraction of branch constraints."""
+        result = _extract_controlled_term_values(sample_field_data_with_branches)
 
-        # Should not crash, may return empty or None
-        assert result is None or isinstance(result, list)
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], BranchConstraint)
+        assert result[0].type == "branch"
+        assert result[0].ontology_acronym == "CHEBI"
+        assert result[0].branch_iri == "http://purl.obolibrary.org/obo/CHEBI_23367"
 
-    def test_mixed_constraints(self, bioportal_api_key: str):
-        """Test field with both classes and branches."""
+    def test_extract_ontology_values(
+        self, sample_field_data_with_ontologies: Dict[str, Any]
+    ):
+        """Test extraction of ontology constraints."""
+        result = _extract_controlled_term_values(sample_field_data_with_ontologies)
+
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], OntologyConstraint)
+        assert result[0].type == "ontology"
+        assert result[0].ontology_acronyms == ["CHEBI", "GO"]
+
+    def test_extract_value_set_values(
+        self, sample_field_data_with_value_sets: Dict[str, Any]
+    ):
+        """Test extraction of valueSet constraints as OntologyConstraint."""
+        result = _extract_controlled_term_values(sample_field_data_with_value_sets)
+
+        assert result is not None
+        assert len(result) == 1
+        assert isinstance(result[0], OntologyConstraint)
+        assert result[0].type == "ontology"
+        assert result[0].ontology_acronyms == ["HRAVS"]
+
+    def test_no_constraints_returns_none(self):
+        """Test that fields without constraints return None."""
+        field_data = {"schema:name": "Simple Field", "_valueConstraints": {}}
+        result = _extract_controlled_term_values(field_data)
+        assert result is None
+
+    def test_extract_mixed_constraints(self):
+        """Test field with both classes and branches returns multiple constraint objects."""
         field_data = {
             "_valueConstraints": {
                 "classes": [
@@ -148,15 +156,25 @@ class TestExtractControlledTermValues:
             }
         }
 
-        result = _extract_controlled_term_values(field_data, bioportal_api_key)
+        result = _extract_controlled_term_values(field_data)
 
-        if result is not None:
-            # Should contain class value
-            class_labels = [
-                v.label for v in result if v.iri == "http://example.org/test"
-            ]
-            assert len(class_labels) > 0
-            assert "Test Class" in class_labels
+        assert result is not None
+        assert len(result) == 2
+
+        # First should be ClassConstraint
+        class_constraint = result[0]
+        assert isinstance(class_constraint, ClassConstraint)
+        assert class_constraint.options[0].label == "Test Class"
+        assert class_constraint.options[0].term_iri == "http://example.org/test"
+
+        # Second should be BranchConstraint
+        branch_constraint = result[1]
+        assert isinstance(branch_constraint, BranchConstraint)
+        assert branch_constraint.ontology_acronym == "HRAVS"
+        assert (
+            branch_constraint.branch_iri
+            == "http://purl.bioontology.org/ontology/HRAVS/HRAVS_0000225"
+        )
 
 
 @pytest.mark.unit
@@ -216,11 +234,11 @@ class TestExtractDefaultValue:
         assert result is None
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestTransformField:
     """Tests for _transform_field function."""
 
-    def test_transform_simple_field(self, bioportal_api_key: str):
+    def test_transform_simple_field(self):
         """Test transformation of a simple field."""
         field_data = {
             "schema:name": "Test Field",
@@ -230,7 +248,7 @@ class TestTransformField:
             "@type": "https://schema.metadatacenter.org/core/TemplateField",
         }
 
-        result = _transform_field("test_field", field_data, bioportal_api_key)
+        result = _transform_field("test_field", field_data)
 
         assert isinstance(result, FieldDefinition)
         assert result.name == "Test Field"
@@ -242,32 +260,30 @@ class TestTransformField:
         assert result.default is None
 
     def test_transform_field_with_literals(
-        self, bioportal_api_key: str, sample_field_data_with_literals: Dict[str, Any]
+        self, sample_field_data_with_literals: Dict[str, Any]
     ):
         """Test transformation of field with literal constraints."""
-        result = _transform_field(
-            "literal_field", sample_field_data_with_literals, bioportal_api_key
-        )
+        result = _transform_field("literal_field", sample_field_data_with_literals)
 
         assert isinstance(result, FieldDefinition)
         assert result.values is not None
-        assert len(result.values) == 3
-        assert all(v.iri is None for v in result.values)
+        assert len(result.values) == 1
+        assert isinstance(result.values[0], LiteralConstraint)
+        assert result.values[0].options == ["Option 1", "Option 2", "Option 3"]
 
     def test_transform_field_with_branches(
-        self, bioportal_api_key: str, sample_field_data_with_branches: Dict[str, Any]
+        self, sample_field_data_with_branches: Dict[str, Any]
     ):
         """Test transformation of field with branch constraints."""
-        result = _transform_field(
-            "branch_field", sample_field_data_with_branches, bioportal_api_key
-        )
+        result = _transform_field("branch_field", sample_field_data_with_branches)
 
         assert isinstance(result, FieldDefinition)
-        # Values may or may not be present depending on BioPortal response
-        if result.values is not None:
-            assert all(isinstance(v, ControlledTermValue) for v in result.values)
+        assert result.values is not None
+        assert len(result.values) == 1
+        assert isinstance(result.values[0], BranchConstraint)
+        assert result.values[0].ontology_acronym == "CHEBI"
 
-    def test_transform_field_with_regex(self, bioportal_api_key: str):
+    def test_transform_field_with_regex(self):
         """Test transformation of field with regex constraint."""
         field_data = {
             "schema:name": "Email Field",
@@ -280,22 +296,20 @@ class TestTransformField:
             "@type": "https://schema.metadatacenter.org/core/TemplateField",
         }
 
-        result = _transform_field("email_field", field_data, bioportal_api_key)
+        result = _transform_field("email_field", field_data)
 
         assert result.regex == r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestCleanTemplateResponse:
     """Tests for clean_template_response function."""
 
     def test_clean_minimal_template(
-        self, bioportal_api_key: str, sample_minimal_template_data: Dict[str, Any]
+        self, sample_minimal_template_data: Dict[str, Any]
     ):
         """Test cleaning of minimal template data."""
-        result = clean_template_response(
-            sample_minimal_template_data, bioportal_api_key
-        )
+        result = clean_template_response(sample_minimal_template_data)
 
         assert isinstance(result, dict)
         assert result["type"] == "template"
@@ -307,7 +321,7 @@ class TestCleanTemplateResponse:
         field_names = [field["name"] for field in result["children"]]
         assert field_names == ["Field 1", "Field 2"]
 
-    def test_clean_template_with_schema_name(self, bioportal_api_key: str):
+    def test_clean_template_with_schema_name(self):
         """Test template cleaning with schema:name preference."""
         template_data = {
             "schema:name": "Proper Template Name",
@@ -316,10 +330,10 @@ class TestCleanTemplateResponse:
             "properties": {},
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
         assert result["name"] == "Proper Template Name"
 
-    def test_clean_template_fallback_title(self, bioportal_api_key: str):
+    def test_clean_template_fallback_title(self):
         """Test template cleaning with title fallback."""
         template_data = {
             "title": "Fallback template schema",
@@ -327,10 +341,10 @@ class TestCleanTemplateResponse:
             "properties": {},
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
         assert result["name"] == "Fallback"
 
-    def test_clean_template_empty_name(self, bioportal_api_key: str):
+    def test_clean_template_empty_name(self):
         """Test template cleaning with empty names."""
         template_data = {
             "schema:name": "",
@@ -339,23 +353,23 @@ class TestCleanTemplateResponse:
             "properties": {},
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
         assert result["name"] == "Unnamed Template"
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestTransformElement:
     """Tests for _transform_element function."""
 
     def test_transform_simple_element(
-        self, bioportal_api_key: str, sample_nested_template_element: Dict[str, Any]
+        self, sample_nested_template_element: Dict[str, Any]
     ):
         """Test transformation of a simple template element with nested fields."""
         from src.cedar_mcp.processing import _transform_element
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
         result = _transform_element(
-            "resource_type", sample_nested_template_element, bioportal_api_key
+            "resource_type", sample_nested_template_element
         )
 
         assert isinstance(result, ElementDefinition)
@@ -376,14 +390,14 @@ class TestTransformElement:
         assert all(isinstance(child, FieldDefinition) for child in result.children)
 
     def test_transform_array_element(
-        self, bioportal_api_key: str, sample_array_template_element: Dict[str, Any]
+        self, sample_array_template_element: Dict[str, Any]
     ):
         """Test transformation of an array template element."""
         from src.cedar_mcp.processing import _transform_element
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
         result = _transform_element(
-            "data_file_title", sample_array_template_element, bioportal_api_key
+            "data_file_title", sample_array_template_element
         )
 
         assert isinstance(result, ElementDefinition)
@@ -398,7 +412,7 @@ class TestTransformElement:
         assert "Title Language" in child_names
         assert all(isinstance(child, FieldDefinition) for child in result.children)
 
-    def test_process_element_children(self, bioportal_api_key: str):
+    def test_process_element_children(self):
         """Test processing of element children with mixed fields and elements."""
         from src.cedar_mcp.processing import _process_element_children
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
@@ -425,7 +439,7 @@ class TestTransformElement:
             },
         }
 
-        result = _process_element_children(element_data, bioportal_api_key)
+        result = _process_element_children(element_data)
 
         assert len(result) == 2
         assert isinstance(result[0], FieldDefinition)
@@ -434,12 +448,12 @@ class TestTransformElement:
         assert result[1].name == "Nested Element"
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 class TestCleanTemplateResponseNested:
     """Tests for clean_template_response function with nested structures."""
 
     def test_clean_template_with_elements(
-        self, bioportal_api_key: str, sample_nested_template_element: Dict[str, Any]
+        self, sample_nested_template_element: Dict[str, Any]
     ):
         """Test cleaning template with template elements."""
         template_data = {
@@ -448,7 +462,7 @@ class TestCleanTemplateResponseNested:
             "properties": {"resource_type": sample_nested_template_element},
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
 
         assert result["type"] == "template"
         assert result["name"] == "Template With Elements"
@@ -466,7 +480,7 @@ class TestCleanTemplateResponseNested:
         assert "Resource Type Detail" in child_names
 
     def test_clean_template_with_array_elements(
-        self, bioportal_api_key: str, sample_array_template_element: Dict[str, Any]
+        self, sample_array_template_element: Dict[str, Any]
     ):
         """Test cleaning template with array elements."""
         template_data = {
@@ -475,7 +489,7 @@ class TestCleanTemplateResponseNested:
             "properties": {"data_file_title": sample_array_template_element},
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
 
         assert result["type"] == "template"
         assert result["name"] == "Template With Arrays"
@@ -493,12 +507,10 @@ class TestCleanTemplateResponseNested:
         assert "Title Language" in child_names
 
     def test_clean_complex_nested_template(
-        self, bioportal_api_key: str, sample_complex_nested_template: Dict[str, Any]
+        self, sample_complex_nested_template: Dict[str, Any]
     ):
         """Test cleaning of complex template with multiple nesting levels."""
-        result = clean_template_response(
-            sample_complex_nested_template, bioportal_api_key
-        )
+        result = clean_template_response(sample_complex_nested_template)
 
         assert result["type"] == "template"
         assert result["name"] == "Complex Nested Template"
@@ -539,7 +551,7 @@ class TestCleanTemplateResponseNested:
         assert nested_coverage["is_array"] is True
         assert len(nested_coverage["children"]) == 2
 
-    def test_mixed_fields_and_elements(self, bioportal_api_key: str):
+    def test_mixed_fields_and_elements(self):
         """Test template with both simple fields and nested elements."""
         template_data = {
             "schema:name": "Mixed Template",
@@ -572,7 +584,7 @@ class TestCleanTemplateResponseNested:
             },
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
 
         assert len(result["children"]) == 2
 
@@ -597,12 +609,10 @@ class TestCleanTemplateResponseArrayFields:
     """Tests for clean_template_response function with array fields (arrays of TemplateFields)."""
 
     def test_clean_template_with_array_field(
-        self, bioportal_api_key: str, sample_template_with_array_field: Dict[str, Any]
+        self, sample_template_with_array_field: Dict[str, Any]
     ):
         """Test cleaning template with array field (array of TemplateFields)."""
-        result = clean_template_response(
-            sample_template_with_array_field, bioportal_api_key
-        )
+        result = clean_template_response(sample_template_with_array_field)
 
         assert result["type"] == "template"
         assert result["name"] == "Template with Array Field"
@@ -629,7 +639,7 @@ class TestCleanTemplateResponseArrayFields:
         )
 
     def test_array_field_properties(
-        self, bioportal_api_key: str, sample_array_template_field: Dict[str, Any]
+        self, sample_array_template_field: Dict[str, Any]
     ):
         """Test that array field properties are correctly extracted from items structure."""
         template_data = {
@@ -638,7 +648,7 @@ class TestCleanTemplateResponseArrayFields:
             "properties": {"notes_array": sample_array_template_field},
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
 
         assert len(result["children"]) == 1
         array_field = result["children"][0]
@@ -654,7 +664,7 @@ class TestCleanTemplateResponseArrayFields:
         assert array_field["is_array"] is True
         assert array_field["configuration"]["required"] is False
 
-    def test_mixed_array_fields_and_elements(self, bioportal_api_key: str):
+    def test_mixed_array_fields_and_elements(self):
         """Test template with both array fields and array elements."""
         template_data = {
             "schema:name": "Mixed Arrays Template",
@@ -694,7 +704,7 @@ class TestCleanTemplateResponseArrayFields:
             },
         }
 
-        result = clean_template_response(template_data, bioportal_api_key)
+        result = clean_template_response(template_data)
 
         assert len(result["children"]) == 2
         children_by_name = {child["name"]: child for child in result["children"]}

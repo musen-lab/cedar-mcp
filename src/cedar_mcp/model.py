@@ -1,18 +1,60 @@
 #!/usr/bin/env python3
 
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
-class ControlledTermValue(BaseModel):
+class ClassOption(BaseModel):
     """
-    Represents a single value in a controlled term field.
+    Represents a single class option with a label and term IRI.
     """
 
     label: str = Field(..., description="Human-readable label")
-    iri: Optional[str] = Field(
-        None, description="IRI/URI identifier (omitted for literals)"
+    term_iri: str = Field(..., description="IRI/URI identifier for the class")
+
+
+class LiteralConstraint(BaseModel):
+    """
+    Constraint for literal (plain text) value options.
+    """
+
+    type: Literal["literal"] = "literal"
+    options: List[str] = Field(..., description="List of allowed literal labels")
+
+
+class OntologyConstraint(BaseModel):
+    """
+    Constraint indicating values should come from one or more ontologies.
+    """
+
+    type: Literal["ontology"] = "ontology"
+    ontology_acronyms: List[str] = Field(
+        ..., description="List of ontology acronyms to search"
     )
+
+
+class ClassConstraint(BaseModel):
+    """
+    Constraint for specific class options with labels and IRIs.
+    """
+
+    type: Literal["class"] = "class"
+    options: List[ClassOption] = Field(..., description="List of class options")
+
+
+class BranchConstraint(BaseModel):
+    """
+    Constraint indicating values should come from a specific ontology branch.
+    """
+
+    type: Literal["branch"] = "branch"
+    ontology_acronym: str = Field(..., description="Ontology acronym")
+    branch_iri: str = Field(..., description="IRI of the branch root")
+
+
+ValueConstraint = Union[
+    LiteralConstraint, OntologyConstraint, ClassConstraint, BranchConstraint
+]
 
 
 class ControlledTermDefault(BaseModel):
@@ -49,8 +91,8 @@ class FieldDefinition(BaseModel):
     default: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
         None, description="Default value"
     )
-    values: Optional[List[ControlledTermValue]] = Field(
-        None, description="Controlled term values"
+    values: Optional[List[ValueConstraint]] = Field(
+        None, description="Value constraints for controlled term fields"
     )
 
 
