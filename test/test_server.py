@@ -309,11 +309,8 @@ class TestEndToEndWorkflow:
                     assert "description" in field
                     assert "prefLabel" in field
                     assert "datatype" in field
-                    assert "configuration" in field
-
-                    # Configuration should have required field
-                    assert "required" in field["configuration"]
-                    assert isinstance(field["configuration"]["required"], bool)
+                    assert "required" in field
+                    assert isinstance(field["required"], bool)
 
         except requests.exceptions.RequestException as e:
             pytest.fail(f"End-to-end workflow failed: {str(e)}")

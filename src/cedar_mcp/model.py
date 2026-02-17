@@ -66,13 +66,6 @@ class ControlledTermDefault(BaseModel):
     iri: str = Field(..., description="Default IRI/URI")
 
 
-class FieldConfiguration(BaseModel):
-    """
-    Configuration settings for a field.
-    """
-
-    required: bool = Field(False, description="Whether the field is required")
-
 
 class FieldDefinition(BaseModel):
     """
@@ -85,7 +78,7 @@ class FieldDefinition(BaseModel):
     datatype: str = Field(
         ..., description="Data type (string, integer, decimal, boolean)"
     )
-    configuration: FieldConfiguration = Field(..., description="Field configuration")
+    required: bool = Field(False, description="Whether the field is required")
     is_array: bool = Field(False, description="Whether this field represents an array")
     regex: Optional[str] = Field(None, description="Validation regex pattern")
     default: Optional[Union[ControlledTermDefault, str, int, float, bool]] = Field(
@@ -107,7 +100,7 @@ class ElementDefinition(BaseModel):
     datatype: str = Field(
         "element", description="Data type (always 'element' for TemplateElements)"
     )
-    configuration: FieldConfiguration = Field(..., description="Element configuration")
+    required: bool = Field(False, description="Whether the element is required")
     is_array: bool = Field(
         False, description="Whether this element represents an array"
     )

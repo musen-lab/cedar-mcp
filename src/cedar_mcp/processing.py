@@ -8,7 +8,6 @@ from .model import (
     ClassOption,
     ControlledTermDefault,
     ElementDefinition,
-    FieldConfiguration,
     FieldDefinition,
     LiteralConstraint,
     OntologyConstraint,
@@ -222,14 +221,12 @@ def _transform_field(
 
     # Extract configuration
     required = constraints.get("requiredValue", False)
-    configuration = FieldConfiguration(required=required)
-
     return FieldDefinition(
         name=name,
         description=description,
         prefLabel=pref_label,
         datatype=datatype,
-        configuration=configuration,
+        required=required,
         is_array=is_field_array,
         regex=regex,
         default=default,
@@ -271,8 +268,6 @@ def _transform_element(
 
     # Extract configuration
     required = constraints.get("requiredValue", False)
-    configuration = FieldConfiguration(required=required)
-
     # Process nested children
     children_list: List[Union[FieldDefinition, ElementDefinition]] = children
 
@@ -281,7 +276,7 @@ def _transform_element(
         description=description,
         prefLabel=pref_label,
         datatype="element",
-        configuration=configuration,
+        required=required,
         is_array=is_array,
         children=children_list,
     )

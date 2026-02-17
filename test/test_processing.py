@@ -255,7 +255,7 @@ class TestTransformField:
         assert result.description == "A test field"
         assert result.prefLabel == "Test Field Label"
         assert result.datatype == "string"
-        assert result.configuration.required is True
+        assert result.required is True
         assert result.values is None
         assert result.default is None
 
@@ -601,7 +601,7 @@ class TestCleanTemplateResponseNested:
         assert complex_child["is_array"] is False
         assert len(complex_child["children"]) == 1
         assert complex_child["children"][0]["name"] == "Nested Field"
-        assert complex_child["children"][0]["configuration"]["required"] is True
+        assert complex_child["children"][0]["required"] is True
 
 
 @pytest.mark.unit
@@ -662,7 +662,7 @@ class TestCleanTemplateResponseArrayFields:
         assert array_field["prefLabel"] == "Notes"
         assert array_field["datatype"] == "string"
         assert array_field["is_array"] is True
-        assert array_field["configuration"]["required"] is False
+        assert array_field["required"] is False
 
     def test_mixed_array_fields_and_elements(self):
         """Test template with both array fields and array elements."""
