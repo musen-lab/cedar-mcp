@@ -608,18 +608,18 @@ class TestGetInstancesBasedOnTemplate:
 
 
 @pytest.mark.integration
-class TestTermSearch:
-    """Integration tests for term_search MCP tool."""
+class TestTermSearchFromBranch:
+    """Integration tests for term_search_from_branch MCP tool."""
 
-    def test_term_search_successful(
+    def test_term_search_from_branch_successful(
         self,
         bioportal_api_key: str,
         sample_bioportal_search_params: Dict[str, str],
     ):
-        """Test term_search returns results for a known term."""
-        from src.cedar_mcp.external_api import search_terms
+        """Test term_search_from_branch returns results for a known term."""
+        from src.cedar_mcp.external_api import search_terms_from_branch
 
-        result = search_terms(
+        result = search_terms_from_branch(
             search_string=sample_bioportal_search_params["search_string"],
             ontology_acronym=sample_bioportal_search_params["ontology_acronym"],
             branch_iri=sample_bioportal_search_params["branch_iri"],
@@ -636,14 +636,14 @@ class TestTermSearch:
         assert "@id" in first_result
         assert "prefLabel" in first_result
 
-    def test_term_search_empty_results(
+    def test_term_search_from_branch_empty_results(
         self,
         bioportal_api_key: str,
     ):
-        """Test term_search returns empty collection for nonsensical query."""
-        from src.cedar_mcp.external_api import search_terms
+        """Test term_search_from_branch returns empty collection for nonsensical query."""
+        from src.cedar_mcp.external_api import search_terms_from_branch
 
-        result = search_terms(
+        result = search_terms_from_branch(
             search_string="xyznonexistentterm12345",
             ontology_acronym="CHEBI",
             branch_iri="http://purl.obolibrary.org/obo/CHEBI_23367",

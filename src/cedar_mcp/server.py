@@ -15,7 +15,7 @@ from .external_api import (
     get_children_from_branch,
     get_instance,
     search_instance_ids,
-    search_terms,
+    search_terms_from_branch,
 )
 
 
@@ -191,7 +191,7 @@ def main():
         return response
 
     @mcp.tool()
-    def term_search(
+    def term_search_from_branch(
         search_string: str,
         ontology_acronym: str,
         branch_iri: str,
@@ -213,7 +213,7 @@ def main():
         Returns:
             Search results from BioPortal containing matching terms
         """
-        result = search_terms(
+        result = search_terms_from_branch(
             search_string=search_string,
             ontology_acronym=ontology_acronym,
             branch_iri=branch_iri,

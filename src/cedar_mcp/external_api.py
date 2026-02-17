@@ -53,7 +53,7 @@ def get_children_from_branch(
         return {"error": f"Failed to parse BioPortal response: {str(e)}"}
 
 
-def search_terms(
+def search_terms_from_branch(
     search_string: str,
     ontology_acronym: str,
     branch_iri: str,
