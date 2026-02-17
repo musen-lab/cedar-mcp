@@ -6,7 +6,8 @@ from src.cedar_mcp.external_api import (
     get_children_from_branch,
     search_instance_ids,
     get_instance,
-    search_terms,
+    search_terms_from_branch,
+    search_terms_from_ontology,
 )
 
 
@@ -204,16 +205,16 @@ class TestGetInstance:
 
 
 @pytest.mark.integration
-class TestSearchTerms:
-    """Integration tests for search_terms function."""
+class TestSearchTermsFromBranch:
+    """Integration tests for search_terms_from_branch function."""
 
-    def test_search_terms_successful(
+    def test_search_terms_from_branch_successful(
         self,
         bioportal_api_key: str,
         sample_bioportal_search_params: Dict[str, str],
     ):
         """Test searching for a known term returns results."""
-        result = search_terms(
+        result = search_terms_from_branch(
             search_string=sample_bioportal_search_params["search_string"],
             ontology_acronym=sample_bioportal_search_params["ontology_acronym"],
             branch_iri=sample_bioportal_search_params["branch_iri"],
@@ -237,15 +238,61 @@ class TestSearchTerms:
             assert isinstance(item["prefLabel"], str)
             assert item["prefLabel"].strip() != ""
 
-    def test_search_terms_invalid_api_key(
+    def test_search_terms_from_branch_invalid_api_key(
         self,
         sample_bioportal_search_params: Dict[str, str],
     ):
         """Test searching with invalid API key returns error."""
-        result = search_terms(
+        result = search_terms_from_branch(
             search_string=sample_bioportal_search_params["search_string"],
             ontology_acronym=sample_bioportal_search_params["ontology_acronym"],
             branch_iri=sample_bioportal_search_params["branch_iri"],
+            bioportal_api_key="invalid-api-key-12345",
+        )
+
+        assert "error" in result
+        assert "Failed to search BioPortal" in result["error"]
+
+
+@pytest.mark.integration
+class TestSearchTermsFromOntology:
+    """Integration tests for search_terms_from_ontology function."""
+
+    def test_search_terms_from_ontology_successful(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test searching for a known term returns results."""
+        result = search_terms_from_ontology(
+            search_string="melanoma",
+            ontology_acronym="NCIT",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        # Should not contain error
+        assert "error" not in result
+
+        # Should have collection with results
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+
+        # Should find at least one result for "melanoma" in NCIT
+        assert len(result["collection"]) > 0
+
+        # Each result should have expected fields
+        for item in result["collection"]:
+            assert "@id" in item
+            assert "prefLabel" in item
+            assert isinstance(item["prefLabel"], str)
+            assert item["prefLabel"].strip() != ""
+
+    def test_search_terms_from_ontology_invalid_api_key(
+        self,
+    ):
+        """Test searching with invalid API key returns error."""
+        result = search_terms_from_ontology(
+            search_string="melanoma",
+            ontology_acronym="NCIT",
             bioportal_api_key="invalid-api-key-12345",
         )
 
