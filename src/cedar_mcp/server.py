@@ -11,7 +11,12 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .processing import clean_template_response, clean_template_instance_response
-from .external_api import search_instance_ids, get_instance, search_terms
+from .external_api import (
+    get_children_from_branch,
+    get_instance,
+    search_instance_ids,
+    search_terms,
+)
 
 
 def main():
@@ -217,6 +222,38 @@ def main():
 
         if "error" in result:
             return {"error": f"Term search failed: {result['error']}"}
+
+        return result
+
+    @mcp.tool()
+    def get_branch_children(
+        branch_iri: str,
+        ontology_acronym: str,
+    ) -> Dict[str, Any]:
+        """
+        Fetch all immediate children terms for a given branch in an ontology.
+
+        Use this tool to retrieve the child terms under a specific branch IRI
+        in a BioPortal ontology. This is useful for exploring the hierarchy of
+        an ontology or populating dropdown options for a controlled vocabulary.
+
+        Args:
+            branch_iri: IRI of the branch to get children for
+                       (e.g., "http://purl.obolibrary.org/obo/CHEBI_23367")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "CHEBI", "HRAVS")
+
+        Returns:
+            BioPortal response containing child terms with their prefLabels
+        """
+        result = get_children_from_branch(
+            branch_iri=branch_iri,
+            ontology_acronym=ontology_acronym,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Get branch children failed: {result['error']}"}
 
         return result
 

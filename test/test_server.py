@@ -654,3 +654,46 @@ class TestTermSearch:
         assert "collection" in result
         assert isinstance(result["collection"], list)
         assert len(result["collection"]) == 0
+
+
+@pytest.mark.integration
+class TestGetChildrenFromBranch:
+    """Integration tests for get_branch_children MCP tool."""
+
+    def test_get_children_successful(
+        self,
+        bioportal_api_key: str,
+        sample_bioportal_branch: Dict[str, str],
+    ):
+        """Test get_children_from_branch returns children for a known branch."""
+        from src.cedar_mcp.external_api import get_children_from_branch
+
+        result = get_children_from_branch(
+            branch_iri=sample_bioportal_branch["branch_iri"],
+            ontology_acronym=sample_bioportal_branch["ontology_acronym"],
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "collection" in result
+        assert isinstance(result["collection"], list)
+        assert len(result["collection"]) > 0
+
+        # Verify result structure
+        first_result = result["collection"][0]
+        assert "prefLabel" in first_result
+
+    def test_get_children_invalid_branch(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test get_children_from_branch returns error for invalid branch IRI."""
+        from src.cedar_mcp.external_api import get_children_from_branch
+
+        result = get_children_from_branch(
+            branch_iri="http://example.org/nonexistent/branch",
+            ontology_acronym="CHEBI",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" in result
