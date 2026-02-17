@@ -51,6 +51,16 @@ def sample_bioportal_branch() -> Dict[str, str]:
 
 
 @pytest.fixture
+def sample_bioportal_search_params() -> Dict[str, str]:
+    """Known stable BioPortal search parameters for testing."""
+    return {
+        "search_string": "aspirin",
+        "ontology_acronym": "CHEBI",
+        "branch_iri": "http://purl.obolibrary.org/obo/CHEBI_23367",
+    }
+
+
+@pytest.fixture
 def sample_field_data_with_branches() -> Dict[str, Any]:
     """Sample field data containing branch constraints for testing."""
     return {
