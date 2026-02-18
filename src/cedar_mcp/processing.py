@@ -3,17 +3,20 @@
 from typing import Any, Dict, List, Optional, Union
 
 from .model import (
-    ControlledTermValue,
+    BranchConstraint,
+    ClassConstraint,
+    ClassOption,
     ControlledTermDefault,
-    FieldConfiguration,
-    FieldDefinition,
     ElementDefinition,
+    FieldDefinition,
+    LiteralConstraint,
+    OntologyConstraint,
     SimplifiedTemplate,
+    ValueConstraint,
 )
-from .external_api import get_children_from_branch
 
 
-def _determine_datatype(field_data: Dict[str, Any]) -> str:
+def _extract_datatype(field_data: Dict[str, Any]) -> str:
     """
     Determine the appropriate datatype for a field based on its properties.
 
@@ -50,21 +53,21 @@ def _determine_datatype(field_data: Dict[str, Any]) -> str:
     return "string"
 
 
-def _extract_controlled_term_values(
-    field_data: Dict[str, Any], bioportal_api_key: str
-) -> Optional[List[ControlledTermValue]]:
+def _extract_permissible_value_definitions(
+    field_data: Dict[str, Any],
+) -> Optional[List[ValueConstraint]]:
     """
-    Extract controlled term values from field constraints.
+    Extract value constraints from field constraint definitions.
 
-    The constraints are either literals or non-literals:
-    - Literals: Simple text values, no IRIs needed
-    - Non-literals: Ontology terms with IRIs from ontologies, valueSets, classes, or branches
+    Returns typed constraint objects describing what kinds of values are allowed,
+    without fetching any external data. Consumers can use the returned constraint
+    metadata to query BioPortal or other services as needed.
 
     Args:
         field_data: Field data from input JSON-LD
-        bioportal_api_key: BioPortal API key for fetching controlled term values
+
     Returns:
-        List of controlled term values or None if not a controlled term field
+        List of value constraints or None if not a controlled term field
     """
     constraints = field_data.get("_valueConstraints", {})
 
@@ -74,7 +77,6 @@ def _extract_controlled_term_values(
     value_sets = constraints.get("valueSets", [])
     classes = constraints.get("classes", [])
     branches = constraints.get("branches", [])
-    default_value = constraints.get("defaultValue")
 
     # Check if this is a controlled term field
     has_controlled_terms = literals or ontologies or value_sets or classes or branches
@@ -82,90 +84,55 @@ def _extract_controlled_term_values(
     if not has_controlled_terms:
         return None
 
-    # Handle literals (no IRIs needed)
+    result: List[ValueConstraint] = []
+
+    # Handle literals
     if literals:
-        return [
-            ControlledTermValue(label=literal["label"], iri=None)
+        options = [
+            literal["label"]
             for literal in literals
             if isinstance(literal, dict) and "label" in literal
         ]
-    else:
-        # Handle non-literals (all must have IRIs)
-        values_dict = {}  # Use dict to avoid duplicates by IRI
+        if options:
+            result.append(LiteralConstraint(options=options))
 
-        # TODO: Handle ontologies (skipped for now)
-        if ontologies:
-            # TODO: Implement ontology processing
-            pass
+    # Handle ontologies
+    if ontologies:
+        acronyms = [
+            o["acronym"] for o in ontologies if isinstance(o, dict) and "acronym" in o
+        ]
+        if acronyms:
+            result.append(OntologyConstraint(ontology_acronyms=acronyms))
 
-        # TODO: Handle valueSets (skipped for now)
-        if value_sets:
-            # TODO: Implement valueSet processing
-            pass
+    # Handle valueSets — fold into OntologyConstraint by extracting acronyms
+    if value_sets:
+        vs_acronyms = [
+            vs["name"] for vs in value_sets if isinstance(vs, dict) and "name" in vs
+        ]
+        if vs_acronyms:
+            result.append(OntologyConstraint(ontology_acronyms=vs_acronyms))
 
-        # Handle classes: pick name and IRI directly
-        for class_item in classes:
-            if (
-                isinstance(class_item, dict)
-                and "prefLabel" in class_item
-                and "@id" in class_item
-            ):
-                iri = class_item["@id"]
-                label = class_item["prefLabel"]
-                if iri not in values_dict:
-                    values_dict[iri] = ControlledTermValue(label=label, iri=iri)
+    # Handle classes
+    if classes:
+        class_options = [
+            ClassOption(label=c["prefLabel"], term_iri=c["@id"])
+            for c in classes
+            if isinstance(c, dict) and "prefLabel" in c and "@id" in c
+        ]
+        if class_options:
+            result.append(ClassConstraint(options=class_options))
 
-        # Handle branches: need to access BioPortal to get children
-        for branch in branches:
-            if isinstance(branch, dict) and "name" in branch and "uri" in branch:
-                # Add the branch itself as a value
-                branch_iri = branch["uri"]
-                ontology_acronym = branch["acronym"]
+    # Handle branches
+    for branch in branches:
+        if isinstance(branch, dict) and "uri" in branch and "acronym" in branch:
+            result.append(
+                BranchConstraint(
+                    ontology_acronym=branch["acronym"],
+                    branch_iri=branch["uri"],
+                )
+            )
 
-                # Fetch children from BioPortal
-                try:
-                    bioportal_response = get_children_from_branch(
-                        branch_iri, ontology_acronym, bioportal_api_key
-                    )
-
-                    # Check for API errors first
-                    if "error" in bioportal_response:
-                        # Skip processing if there was an API error
-                        continue
-
-                    # Parse the raw BioPortal response
-                    collection = bioportal_response.get("collection", [])
-
-                    # Convert BioPortal response to ControlledTermValue objects
-                    for item in collection:
-                        if isinstance(item, dict):
-                            child_label = item.get("prefLabel")
-                            child_iri = item.get("@id")
-
-                            if (
-                                child_label
-                                and child_iri
-                                and child_iri not in values_dict
-                            ):
-                                values_dict[child_iri] = ControlledTermValue(
-                                    label=child_label, iri=child_iri
-                                )
-                except ValueError:
-                    # If API key not found, skip BioPortal children fetching
-                    pass
-
-        # Add default value if it exists (for fields with termUri)
-        if default_value and isinstance(default_value, dict):
-            if "rdfs:label" in default_value and "termUri" in default_value:
-                default_iri = default_value["termUri"]
-                default_label = default_value["rdfs:label"]
-                if default_iri not in values_dict:
-                    values_dict[default_iri] = ControlledTermValue(
-                        label=default_label, iri=default_iri
-                    )
-
-        # Return list of unique values
-        return list(values_dict.values()) if values_dict else None
+    return result if result else None
 
 
 def _extract_default_value(
@@ -205,9 +172,7 @@ def _extract_default_value(
     return None
 
 
-def _transform_field(
-    field_name: str, field_data: Dict[str, Any], bioportal_api_key: str
-) -> FieldDefinition:
+def _transform_field(field_name: str, field_data: Dict[str, Any]) -> FieldDefinition:
     """
     Transform a single field from input JSON-LD to output structure.
     Handles both regular fields and arrays of fields.
@@ -215,7 +180,7 @@ def _transform_field(
     Args:
         field_name: Name of the field
         field_data: Field data from input JSON-LD
-        bioportal_api_key: BioPortal API key for fetching controlled term values
+
     Returns:
         Transformed output field
     """
@@ -229,40 +194,38 @@ def _transform_field(
     # Regular field processing
     name = field_data.get("schema:name", field_name)
     description = field_data.get("schema:description", "")
-    pref_label = field_data.get("skos:prefLabel", name)
+    label = field_data.get("skos:prefLabel", name)
     constraints = field_data.get("_valueConstraints", {})
 
     # Determine datatype
-    datatype = _determine_datatype(field_data)
+    type = _extract_datatype(field_data)
 
     # Extract controlled term values
-    values = _extract_controlled_term_values(field_data, bioportal_api_key)
+    permissible_values = _extract_permissible_value_definitions(field_data)
 
     # Extract default value
-    default = _extract_default_value(field_data)
+    default_value = _extract_default_value(field_data)
 
     # Extract regex if present
-    regex = constraints.get("regex")
+    pattern = constraints.get("regex")
 
     # Extract configuration
     required = constraints.get("requiredValue", False)
-    configuration = FieldConfiguration(required=required)
-
     return FieldDefinition(
         name=name,
         description=description,
-        prefLabel=pref_label,
-        datatype=datatype,
-        configuration=configuration,
-        is_array=is_field_array,
-        regex=regex,
-        default=default,
-        values=values,
+        label=label,
+        type=type,
+        required=required,
+        multivalued=is_field_array,
+        pattern=pattern,
+        default_value=default_value,
+        permissible_values=permissible_values,
     )
 
 
 def _transform_element(
-    element_name: str, element_data: Dict[str, Any], bioportal_api_key: str
+    element_name: str, element_data: Dict[str, Any]
 ) -> ElementDefinition:
     """
     Transform a single template element from input JSON-LD to output structure.
@@ -270,7 +233,7 @@ def _transform_element(
     Args:
         element_name: Name of the element
         element_data: Element data from input JSON-LD
-        bioportal_api_key: BioPortal API key for fetching controlled term values
+
     Returns:
         Transformed output element
     """
@@ -284,42 +247,40 @@ def _transform_element(
         description = item_data.get("schema:description", "")
         pref_label = item_data.get("skos:prefLabel", name)
         constraints = item_data.get("_valueConstraints", {})
-        children = _process_element_children(item_data, bioportal_api_key)
+        children = _process_element_children(item_data)
     else:
         # For regular elements, extract from the element itself
         name = element_data.get("schema:name", element_name)
         description = element_data.get("schema:description", "")
         pref_label = element_data.get("skos:prefLabel", name)
         constraints = element_data.get("_valueConstraints", {})
-        children = _process_element_children(element_data, bioportal_api_key)
+        children = _process_element_children(element_data)
 
     # Extract configuration
     required = constraints.get("requiredValue", False)
-    configuration = FieldConfiguration(required=required)
-
     # Process nested children
     children_list: List[Union[FieldDefinition, ElementDefinition]] = children
 
     return ElementDefinition(
         name=name,
         description=description,
-        prefLabel=pref_label,
-        datatype="element",
-        configuration=configuration,
-        is_array=is_array,
+        label=pref_label,
+        type="element",
+        required=required,
+        multivalued=is_array,
         children=children_list,
     )
 
 
 def _process_element_children(
-    element_data: Dict[str, Any], bioportal_api_key: str
+    element_data: Dict[str, Any],
 ) -> List[Union[FieldDefinition, ElementDefinition]]:
     """
     Process the children of a template element, handling nested fields and elements.
 
     Args:
         element_data: Element data containing properties and UI order
-        bioportal_api_key: BioPortal API key for fetching controlled term values
+
     Returns:
         List of child field and element definitions
     """
@@ -341,31 +302,25 @@ def _process_element_children(
 
                 if child_type == "https://schema.metadatacenter.org/core/TemplateField":
                     # It's a field
-                    field_child = _transform_field(
-                        child_name, child_data, bioportal_api_key
-                    )
+                    field_child = _transform_field(child_name, child_data)
                     children.append(field_child)
                 elif (
                     child_type
                     == "https://schema.metadatacenter.org/core/TemplateElement"
                 ):
                     # It's an element
-                    element_child = _transform_element(
-                        child_name, child_data, bioportal_api_key
-                    )
+                    element_child = _transform_element(child_name, child_data)
                     children.append(element_child)
                 elif child_data.get("type") == "array" and "items" in child_data:
                     # It's an array of elements
-                    array_child = _transform_element(
-                        child_name, child_data, bioportal_api_key
-                    )
+                    array_child = _transform_element(child_name, child_data)
                     children.append(array_child)
 
     return children
 
 
 def clean_template_response(
-    template_data: Dict[str, Any], bioportal_api_key: str
+    template_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
     Clean and transform the raw CEDAR template JSON-LD to simplified YAML structure.
@@ -373,7 +328,7 @@ def clean_template_response(
 
     Args:
         template_data: Raw template data from CEDAR (JSON-LD format)
-        bioportal_api_key: BioPortal API key for fetching controlled term values
+
     Returns:
         Cleaned and transformed template data as dictionary (ready for YAML export)
     """
@@ -407,18 +362,14 @@ def clean_template_response(
 
                 if item_type == "https://schema.metadatacenter.org/core/TemplateField":
                     # It's a simple field
-                    field_child = _transform_field(
-                        item_name, item_data, bioportal_api_key
-                    )
+                    field_child = _transform_field(item_name, item_data)
                     output_children.append(field_child)
                 elif (
                     item_type
                     == "https://schema.metadatacenter.org/core/TemplateElement"
                 ):
                     # It's a template element (possibly an array)
-                    element_child = _transform_element(
-                        item_name, item_data, bioportal_api_key
-                    )
+                    element_child = _transform_element(item_name, item_data)
                     output_children.append(element_child)
                 elif item_data.get("type") == "array" and "items" in item_data:
                     # It's an array - check what type of items it contains
@@ -428,18 +379,14 @@ def clean_template_response(
                         == "https://schema.metadatacenter.org/core/TemplateField"
                     ):
                         # Array of fields - treat as a field with array marker
-                        field_child = _transform_field(
-                            item_name, item_data, bioportal_api_key
-                        )
+                        field_child = _transform_field(item_name, item_data)
                         output_children.append(field_child)
                     elif (
                         items_type
                         == "https://schema.metadatacenter.org/core/TemplateElement"
                     ):
                         # Array of elements - treat as an element
-                        element_child = _transform_element(
-                            item_name, item_data, bioportal_api_key
-                        )
+                        element_child = _transform_element(item_name, item_data)
                         output_children.append(element_child)
 
     # Create output template
