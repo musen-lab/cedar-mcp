@@ -120,6 +120,9 @@ Here is the list of CEDAR tools with a short description
 
 * `get_cedar_template`: Fetches a template from the CEDAR repository.
 * `get_instances_based_on_template`: Gets template instances that belong to a specific template with pagination support.
+* `term_search_from_branch`: Searches BioPortal for standardized ontology terms within a specific branch.
+* `term_search_from_ontology`: Searches BioPortal for standardized ontology terms within an entire ontology.
+* `get_branch_children`: Fetches all immediate children terms for a given branch in an ontology.
 
 ## Development
 
