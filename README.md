@@ -118,7 +118,7 @@ Or if you have it installed locally:
 
 Here is the list of CEDAR tools with a short description
 
-* `get_template`: Fetches a template from the CEDAR repository.
+* `get_cedar_template`: Fetches a template from the CEDAR repository.
 * `get_instances_based_on_template`: Gets template instances that belong to a specific template with pagination support.
 
 ## Development

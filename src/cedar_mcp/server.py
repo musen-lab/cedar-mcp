@@ -59,7 +59,7 @@ def main():
 
     # Register MCP tools
     @mcp.tool()
-    def get_template(template_id: str) -> Dict[str, Any]:
+    def get_cedar_template(template_id: str) -> Dict[str, Any]:
         """
         Get a template from the CEDAR repository.
 
