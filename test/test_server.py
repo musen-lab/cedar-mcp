@@ -11,9 +11,9 @@ import io
 
 @pytest.mark.integration
 class TestGetTemplate:
-    """Integration tests for get_template function from server.py."""
+    """Integration tests for get_cedar_template function from server.py."""
 
-    def test_get_template_valid_id(
+    def test_get_cedar_template_valid_id(
         self, cedar_api_key: str, sample_cedar_template_id: str
     ):
         """Test fetching a valid template from CEDAR."""
@@ -62,7 +62,7 @@ class TestGetTemplate:
             except requests.exceptions.RequestException as e:
                 pytest.fail(f"Failed to fetch template: {str(e)}")
 
-    def test_get_template_invalid_id(self, cedar_api_key: str):
+    def test_get_cedar_template_invalid_id(self, cedar_api_key: str):
         """Test fetching with invalid template ID."""
         headers = {
             "Accept": "application/json",
@@ -84,7 +84,7 @@ class TestGetTemplate:
         # Should get 404 or other error status
         assert response.status_code != 200
 
-    def test_get_template_invalid_api_key(self, sample_cedar_template_id: str):
+    def test_get_cedar_template_invalid_api_key(self, sample_cedar_template_id: str):
         """Test fetching with invalid API key."""
         headers = {
             "Accept": "application/json",
