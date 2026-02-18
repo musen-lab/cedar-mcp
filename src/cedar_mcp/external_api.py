@@ -53,6 +53,91 @@ def get_children_from_branch(
         return {"error": f"Failed to parse BioPortal response: {str(e)}"}
 
 
+def search_terms_from_branch(
+    search_string: str,
+    ontology_acronym: str,
+    branch_iri: str,
+    bioportal_api_key: str,
+) -> Dict[str, Any]:
+    """
+    Search BioPortal for standardized ontology terms within a specific branch.
+
+    Args:
+        search_string: The term label or keyword to search for
+        ontology_acronym: Ontology acronym (e.g., "CHEBI", "HRAVS")
+        branch_iri: IRI of the branch to restrict the search to
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing raw BioPortal search response or error information
+    """
+    try:
+        base_url = "https://data.bioontology.org/search"
+
+        params = {
+            "q": search_string,
+            "ontology": ontology_acronym,
+            "subtree_root_id": branch_iri,
+            "include": "prefLabel,definition,synonym",
+            "display_links": "false",
+            "display_context": "false",
+            "include_views": "false",
+        }
+
+        headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
+
+        response = requests.get(base_url, headers=headers, params=params)
+        response.raise_for_status()
+
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to search BioPortal: {str(e)}"}
+    except (KeyError, ValueError) as e:
+        return {"error": f"Failed to parse BioPortal search response: {str(e)}"}
+
+
+def search_terms_from_ontology(
+    search_string: str,
+    ontology_acronym: str,
+    bioportal_api_key: str,
+) -> Dict[str, Any]:
+    """
+    Search BioPortal for standardized ontology terms within an entire ontology.
+
+    Args:
+        search_string: The term label or keyword to search for
+        ontology_acronym: Ontology acronym (e.g., "NCIT", "CHEBI")
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing raw BioPortal search response or error information
+    """
+    try:
+        base_url = "https://data.bioontology.org/search"
+
+        params = {
+            "q": search_string,
+            "ontologies": ontology_acronym,
+            "include": "prefLabel,definition,synonym",
+            "display_links": "false",
+            "display_context": "false",
+            "include_views": "false",
+        }
+
+        headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
+
+        response = requests.get(base_url, headers=headers, params=params)
+        response.raise_for_status()
+
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to search BioPortal: {str(e)}"}
+    except (KeyError, ValueError) as e:
+        return {"error": f"Failed to parse BioPortal search response: {str(e)}"}
+
+
 def search_instance_ids(
     template_id: str, cedar_api_key: str, limit: int = 10, offset: int = 0
 ) -> Dict[str, Any]:

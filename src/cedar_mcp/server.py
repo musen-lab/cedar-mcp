@@ -11,7 +11,13 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .processing import clean_template_response, clean_template_instance_response
-from .external_api import search_instance_ids, get_instance
+from .external_api import (
+    get_children_from_branch,
+    get_instance,
+    search_instance_ids,
+    search_terms_from_branch,
+    search_terms_from_ontology,
+)
 
 
 def main():
@@ -85,7 +91,7 @@ def main():
             return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
 
         # Always clean the response
-        template_data = clean_template_response(template_data, BIOPORTAL_API_KEY)
+        template_data = clean_template_response(template_data)
 
         return template_data
 
@@ -184,6 +190,104 @@ def main():
             response["errors"] = failed_instances
 
         return response
+
+    @mcp.tool()
+    def term_search_from_branch(
+        search_string: str,
+        ontology_acronym: str,
+        branch_iri: str,
+    ) -> Dict[str, Any]:
+        """
+        Search BioPortal for standardized ontology terms within a specific branch.
+
+        Use this tool to find the correct standardized name and IRI for a given
+        term label within a specific ontology branch.
+
+        Args:
+            search_string: The term label or keyword to search for
+                          (e.g., "aspirin", "glucose")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "CHEBI", "HRAVS")
+            branch_iri: IRI of the branch to restrict the search to
+                       (e.g., "http://purl.obolibrary.org/obo/CHEBI_23367")
+
+        Returns:
+            Search results from BioPortal containing matching terms
+        """
+        result = search_terms_from_branch(
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+            branch_iri=branch_iri,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Term search failed: {result['error']}"}
+
+        return result
+
+    @mcp.tool()
+    def term_search_from_ontology(
+        search_string: str,
+        ontology_acronym: str,
+    ) -> Dict[str, Any]:
+        """
+        Search BioPortal for standardized ontology terms within an entire ontology.
+
+        Use this tool to find the correct standardized name and IRI for a given
+        term label across an entire ontology (not restricted to a specific branch).
+
+        Args:
+            search_string: The term label or keyword to search for
+                          (e.g., "melanoma", "diabetes")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "NCIT", "CHEBI", "DOID")
+
+        Returns:
+            Search results from BioPortal containing matching terms
+        """
+        result = search_terms_from_ontology(
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Term search failed: {result['error']}"}
+
+        return result
+
+    @mcp.tool()
+    def get_branch_children(
+        branch_iri: str,
+        ontology_acronym: str,
+    ) -> Dict[str, Any]:
+        """
+        Fetch all immediate children terms for a given branch in an ontology.
+
+        Use this tool to retrieve the child terms under a specific branch IRI
+        in a BioPortal ontology. This is useful for exploring the hierarchy of
+        an ontology or populating dropdown options for a controlled vocabulary.
+
+        Args:
+            branch_iri: IRI of the branch to get children for
+                       (e.g., "http://purl.obolibrary.org/obo/CHEBI_23367")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "CHEBI", "HRAVS")
+
+        Returns:
+            BioPortal response containing child terms with their prefLabels
+        """
+        result = get_children_from_branch(
+            branch_iri=branch_iri,
+            ontology_acronym=ontology_acronym,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Get branch children failed: {result['error']}"}
+
+        return result
 
     # Start the MCP server
     print("Starting CEDAR MCP server...")
