@@ -47,7 +47,9 @@ class TestMakeCacheKey:
 class TestGetCacheDir:
     """Tests for _get_cache_dir."""
 
-    def test_env_var_override(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_env_var_override(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """CEDAR_MCP_CACHE_DIR should override the default location."""
         custom_dir = tmp_path / "custom_cache"
         monkeypatch.setenv("CEDAR_MCP_CACHE_DIR", str(custom_dir))

@@ -205,7 +205,14 @@ class BioPortalCache:
                     (key, value, func_name, params_summary, created_at, ttl_seconds)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (key, value_json, func_name, params_summary, time.time(), self.ttl_seconds),
+                (
+                    key,
+                    value_json,
+                    func_name,
+                    params_summary,
+                    time.time(),
+                    self.ttl_seconds,
+                ),
             )
             conn.commit()
 
