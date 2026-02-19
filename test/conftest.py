@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
 import os
+from pathlib import Path
+
 import pytest
 from typing import Dict, Any
 from dotenv import load_dotenv
+
+from cedar_mcp.cache import BioPortalCache
 
 # Load test environment variables
 load_dotenv(".env.test")
@@ -25,6 +29,12 @@ def bioportal_api_key() -> str:
     if not api_key:
         pytest.skip("BIOPORTAL_API_KEY not found in .env.test")
     return api_key
+
+
+@pytest.fixture
+def tmp_cache(tmp_path: Path) -> BioPortalCache:
+    """Provide a BioPortalCache backed by a temporary database."""
+    return BioPortalCache(db_path=tmp_path / "test_cache.db", ttl_seconds=3600)
 
 
 @pytest.fixture

@@ -91,7 +91,9 @@ To use with Claude Desktop app:
       ],
       "env": {
         "CEDAR_API_KEY": "your-cedar-key",
-        "BIOPORTAL_API_KEY": "your-bioportal-key"
+        "BIOPORTAL_API_KEY": "your-bioportal-key",
+        "CEDAR_MCP_CACHE_TTL_SECONDS": "86400",
+        "CEDAR_MCP_CACHE_DIR": "/path/to/custom/location"
       }
     }
   }
@@ -106,13 +108,17 @@ Or if you have it installed locally:
     "cedar-mcp": {
       "command": "cedar-mcp",
       "env": {
-        "CEDAR_API_KEY": "your-cedar-key", 
-        "BIOPORTAL_API_KEY": "your-bioportal-key"
+        "CEDAR_API_KEY": "your-cedar-key",
+        "BIOPORTAL_API_KEY": "your-bioportal-key",
+        "CEDAR_MCP_CACHE_TTL_SECONDS": "86400",
+        "CEDAR_MCP_CACHE_DIR": "/path/to/custom/location"
       }
     }
   }
 }
 ```
+
+The `CEDAR_MCP_CACHE_TTL_SECONDS` and `CEDAR_MCP_CACHE_DIR` environment variables are optional. When set under the `"env"` key, Claude Desktop injects them into the server process environment before it starts, so the cache picks them up automatically. If omitted, the defaults apply (24-hour TTL and a platform-specific cache directory — see [Cache Configuration](#cache-configuration)).
 
 ## Available Tools
 
@@ -123,6 +129,22 @@ Here is the list of CEDAR tools with a short description
 * `term_search_from_branch`: Searches BioPortal for standardized ontology terms within a specific branch.
 * `term_search_from_ontology`: Searches BioPortal for standardized ontology terms within an entire ontology.
 * `get_branch_children`: Fetches all immediate children terms for a given branch in an ontology.
+* `remove_stale_cache_entries`: Removes expired entries from the BioPortal search cache.
+* `clear_bioportal_cache`: Clears all entries from the BioPortal search cache.
+
+## Cache Configuration
+
+BioPortal search results are cached locally using SQLite to reduce latency and API load. The cache persists across server restarts.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CEDAR_MCP_CACHE_TTL_SECONDS` | `86400` (24 hours) | Time-to-live for cached BioPortal responses |
+| `CEDAR_MCP_CACHE_DIR` | Platform-specific (see below) | Override the cache directory location |
+
+**Default cache locations:**
+- **macOS:** `~/Library/Caches/cedar-mcp`
+- **Linux:** `$XDG_CACHE_HOME/cedar-mcp` or `~/.cache/cedar-mcp`
+- **Windows:** `%LOCALAPPDATA%/cedar-mcp/cache`
 
 ## Development
 

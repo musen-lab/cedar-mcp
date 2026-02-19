@@ -10,6 +10,7 @@ import requests
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
+from .cache import BioPortalCache
 from .processing import clean_template_response, clean_template_instance_response
 from .external_api import (
     get_children_from_branch,
@@ -56,6 +57,9 @@ def main():
             "Error: BioPortal API key not provided. Please set BIOPORTAL_API_KEY environment variable or use --bioportal-api-key."
         )
         sys.exit(1)
+
+    # Initialize BioPortal cache
+    cache = BioPortalCache()
 
     # Register MCP tools
     @mcp.tool()
@@ -214,6 +218,15 @@ def main():
         Returns:
             Search results from BioPortal containing matching terms
         """
+        cached = cache.get(
+            "search_terms_from_branch",
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+            branch_iri=branch_iri,
+        )
+        if cached is not None:
+            return cached
+
         result = search_terms_from_branch(
             search_string=search_string,
             ontology_acronym=ontology_acronym,
@@ -223,6 +236,14 @@ def main():
 
         if "error" in result:
             return {"error": f"Term search failed: {result['error']}"}
+
+        cache.set(
+            "search_terms_from_branch",
+            result,
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+            branch_iri=branch_iri,
+        )
 
         return result
 
@@ -246,6 +267,14 @@ def main():
         Returns:
             Search results from BioPortal containing matching terms
         """
+        cached = cache.get(
+            "search_terms_from_ontology",
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+        )
+        if cached is not None:
+            return cached
+
         result = search_terms_from_ontology(
             search_string=search_string,
             ontology_acronym=ontology_acronym,
@@ -254,6 +283,13 @@ def main():
 
         if "error" in result:
             return {"error": f"Term search failed: {result['error']}"}
+
+        cache.set(
+            "search_terms_from_ontology",
+            result,
+            search_string=search_string,
+            ontology_acronym=ontology_acronym,
+        )
 
         return result
 
@@ -288,6 +324,34 @@ def main():
             return {"error": f"Get branch children failed: {result['error']}"}
 
         return result
+
+    @mcp.tool()
+    def remove_stale_cache_entries() -> Dict[str, int]:
+        """
+        Remove expired entries from the BioPortal search cache.
+
+        This tool cleans up cache entries that have exceeded their TTL
+        (time-to-live). Use it to free disk space without losing valid
+        cached results.
+
+        Returns:
+            Dictionary with removed_count and remaining_count
+        """
+        return cache.remove_stale()
+
+    @mcp.tool()
+    def clear_bioportal_cache() -> Dict[str, int]:
+        """
+        Clear all entries from the BioPortal search cache.
+
+        Use this tool to force fresh API calls for all subsequent
+        BioPortal searches. This is useful when ontology data has been
+        updated and you want to ensure the latest results.
+
+        Returns:
+            Dictionary with cleared_count
+        """
+        return cache.clear_all()
 
     # Start the MCP server
     print("Starting CEDAR MCP server...")
