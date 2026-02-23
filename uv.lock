@@ -98,14 +98,18 @@ source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "requests" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "fastmcp" },
     { name = "pydantic", specifier = ">=2.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
+    { name = "requests", specifier = ">=2.28.0" },
 ]
 
 [[package]]
