@@ -738,3 +738,46 @@ class TestGetChildrenFromBranch:
         )
 
         assert "error" in result
+
+
+@pytest.mark.integration
+class TestGetClassTree:
+    """Integration tests for get_ontology_class_tree MCP tool."""
+
+    def test_get_class_tree_successful(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test get_class_tree returns tree for a known class."""
+        from src.cedar_mcp.external_api import get_class_tree
+
+        result = get_class_tree(
+            class_iri="http://purl.obolibrary.org/obo/MONDO_0005180",
+            ontology_acronym="MONDO",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" not in result
+        assert "tree" in result
+        assert isinstance(result["tree"], list)
+        assert len(result["tree"]) > 0
+
+        # Verify result structure
+        first_node = result["tree"][0]
+        assert "@id" in first_node
+        assert "prefLabel" in first_node
+
+    def test_get_class_tree_invalid_class(
+        self,
+        bioportal_api_key: str,
+    ):
+        """Test get_class_tree returns error for invalid class IRI."""
+        from src.cedar_mcp.external_api import get_class_tree
+
+        result = get_class_tree(
+            class_iri="http://example.org/nonexistent/class",
+            ontology_acronym="MONDO",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" in result

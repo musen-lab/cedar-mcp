@@ -129,6 +129,7 @@ Here is the list of CEDAR tools with a short description
 * `term_search_from_branch`: Searches BioPortal for standardized ontology terms within a specific branch.
 * `term_search_from_ontology`: Searches BioPortal for standardized ontology terms within an entire ontology.
 * `get_branch_children`: Fetches all immediate children terms for a given branch in an ontology.
+* `get_ontology_class_tree`: Fetches the hierarchical tree structure for a given class in an ontology.
 * `remove_stale_cache_entries`: Removes expired entries from the BioPortal search cache.
 * `clear_bioportal_cache`: Clears all entries from the BioPortal search cache.
 
