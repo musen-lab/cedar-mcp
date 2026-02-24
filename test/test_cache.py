@@ -141,3 +141,23 @@ class TestBioPortalCache:
         cached = tmp_cache.get("search", q="aspirin")
         assert cached is not None
         assert cached["_cache_age_seconds"] >= 0.4
+
+    def test_get_class_tree_cache_roundtrip(self, tmp_cache: BioPortalCache) -> None:
+        """Stored get_class_tree values should be retrievable."""
+        data = {"tree": [{"@id": "http://example.org/class1", "prefLabel": "Root"}]}
+        tmp_cache.set(
+            "get_class_tree",
+            data,
+            class_iri="http://purl.obolibrary.org/obo/MONDO_0005180",
+            ontology_acronym="MONDO",
+        )
+
+        cached = tmp_cache.get(
+            "get_class_tree",
+            class_iri="http://purl.obolibrary.org/obo/MONDO_0005180",
+            ontology_acronym="MONDO",
+        )
+        assert cached is not None
+        assert cached["tree"][0]["prefLabel"] == "Root"
+        assert cached["_cached"] is True
+        assert "_cache_age_seconds" in cached
