@@ -26,43 +26,108 @@ class TestExtractDatatype:
 
     def test_string_datatype_default(self):
         """Test that string is returned as default datatype."""
-        field_data = {"properties": {"@value": {}}}
+        field_data = {"_ui": {"inputType": "textfield"}}
         result = _extract_datatype(field_data)
         assert result == "string"
 
-    def test_integer_datatype(self):
-        """Test integer datatype detection."""
-        field_data = {"properties": {"@value": {"type": "integer"}}}
+    def test_string_for_textarea(self):
+        """Test that textarea input type returns string."""
+        field_data = {"_ui": {"inputType": "textarea"}}
+        result = _extract_datatype(field_data)
+        assert result == "string"
+
+    def test_integer_datatype_xsd_int(self):
+        """Test integer datatype detection from xsd:int."""
+        field_data = {
+            "_ui": {"inputType": "numeric"},
+            "_valueConstraints": {"numberType": "xsd:int"},
+        }
+        result = _extract_datatype(field_data)
+        assert result == "integer"
+
+    def test_integer_datatype_xsd_integer(self):
+        """Test integer datatype detection from xsd:integer."""
+        field_data = {
+            "_ui": {"inputType": "numeric"},
+            "_valueConstraints": {"numberType": "xsd:integer"},
+        }
+        result = _extract_datatype(field_data)
+        assert result == "integer"
+
+    def test_integer_datatype_xsd_long(self):
+        """Test integer datatype detection from xsd:long."""
+        field_data = {
+            "_ui": {"inputType": "numeric"},
+            "_valueConstraints": {"numberType": "xsd:long"},
+        }
         result = _extract_datatype(field_data)
         assert result == "integer"
 
     def test_decimal_datatype(self):
-        """Test decimal datatype detection."""
-        field_data = {"properties": {"@value": {"type": "number"}}}
+        """Test decimal datatype detection from xsd:decimal."""
+        field_data = {
+            "_ui": {"inputType": "numeric"},
+            "_valueConstraints": {"numberType": "xsd:decimal"},
+        }
         result = _extract_datatype(field_data)
         assert result == "decimal"
 
-    def test_boolean_datatype(self):
-        """Test boolean datatype detection."""
-        field_data = {"properties": {"@value": {"type": "boolean"}}}
-        result = _extract_datatype(field_data)
-        assert result == "boolean"
-
-    def test_list_type_integer(self):
-        """Test integer datatype from list type."""
-        field_data = {"properties": {"@value": {"type": ["string", "integer"]}}}
-        result = _extract_datatype(field_data)
-        assert result == "integer"
-
-    def test_list_type_number(self):
-        """Test decimal datatype from list type."""
-        field_data = {"properties": {"@value": {"type": ["string", "number"]}}}
+    def test_decimal_datatype_default_numeric(self):
+        """Test decimal is default for numeric without specific numberType."""
+        field_data = {
+            "_ui": {"inputType": "numeric"},
+            "_valueConstraints": {},
+        }
         result = _extract_datatype(field_data)
         assert result == "decimal"
+
+    def test_datetime_datatype(self):
+        """Test datetime datatype detection."""
+        field_data = {
+            "_ui": {"inputType": "temporal"},
+            "_valueConstraints": {"temporalType": "xsd:dateTime"},
+        }
+        result = _extract_datatype(field_data)
+        assert result == "datetime"
+
+    def test_date_datatype(self):
+        """Test date datatype detection."""
+        field_data = {
+            "_ui": {"inputType": "temporal"},
+            "_valueConstraints": {"temporalType": "xsd:date"},
+        }
+        result = _extract_datatype(field_data)
+        assert result == "date"
+
+    def test_time_datatype(self):
+        """Test time datatype detection."""
+        field_data = {
+            "_ui": {"inputType": "temporal"},
+            "_valueConstraints": {"temporalType": "xsd:time"},
+        }
+        result = _extract_datatype(field_data)
+        assert result == "time"
+
+    def test_link_datatype(self):
+        """Test link datatype detection."""
+        field_data = {"_ui": {"inputType": "link"}}
+        result = _extract_datatype(field_data)
+        assert result == "link"
 
     def test_empty_field_data(self):
         """Test handling of empty field data."""
         result = _extract_datatype({})
+        assert result == "string"
+
+    def test_controlled_term_returns_string(self):
+        """Test that controlled term fields return string."""
+        field_data = {
+            "_ui": {"inputType": "textfield"},
+            "_valueConstraints": {
+                "ontologies": [{"acronym": "CHEBI"}],
+            },
+        }
+        result = _extract_datatype(field_data)
         assert result == "string"
 
 

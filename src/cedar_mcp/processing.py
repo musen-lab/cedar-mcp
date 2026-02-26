@@ -18,38 +18,60 @@ from .model import (
 
 def _extract_datatype(field_data: Dict[str, Any]) -> str:
     """
-    Determine the appropriate datatype for a field based on its properties.
+    Determine the appropriate datatype for a field based on its CEDAR properties.
+
+    Checks `_ui.inputType` and `_valueConstraints` to determine the actual
+    data type, since CEDAR's `properties.@value.type` is always
+    `["string", "null"]` regardless of the semantic type.
 
     Args:
         field_data: Field data from input JSON-LD
 
     Returns:
-        Datatype string (string, integer, decimal, boolean)
+        Datatype string (string, integer, decimal, boolean, date, datetime, time)
     """
-    properties = field_data.get("properties", {})
-    value_props = properties.get("@value", {})
+    ui_config = field_data.get("_ui", {})
+    input_type = ui_config.get("inputType", "")
+    constraints = field_data.get("_valueConstraints", {})
 
-    # Check for numeric and boolean types
-    if isinstance(value_props, dict) and "type" in value_props:
-        value_type = value_props["type"]
-        if value_type == "number":
-            return "decimal"
-        elif value_type == "integer":
+    # Check for numeric types via _ui.inputType and _valueConstraints.numberType
+    if input_type == "numeric":
+        number_type = constraints.get("numberType", "")
+        integer_xsd_types = {
+            "xsd:int",
+            "xsd:integer",
+            "xsd:long",
+            "xsd:short",
+            "xsd:byte",
+        }
+        if number_type in integer_xsd_types:
             return "integer"
-        elif value_type == "boolean":
-            return "boolean"
+        return "decimal"
 
-    # Check if it's a list type that includes numbers
-    if isinstance(value_props, dict) and "type" in value_props:
-        if isinstance(value_props["type"], list):
-            if "number" in value_props["type"]:
-                return "decimal"
-            elif "integer" in value_props["type"]:
-                return "integer"
-            elif "boolean" in value_props["type"]:
-                return "boolean"
+    # Check for temporal types
+    if input_type == "temporal":
+        temporal_type = constraints.get("temporalType", "")
+        if temporal_type == "xsd:date":
+            return "date"
+        elif temporal_type == "xsd:time":
+            return "time"
+        return "datetime"
 
-    # Default to string for text, controlled terms, links
+    # Check for boolean type (CEDAR uses checkbox with no controlled terms)
+    if (
+        input_type == "checkbox"
+        and not constraints.get("branches")
+        and not constraints.get("ontologies")
+        and not constraints.get("classes")
+        and not constraints.get("valueSets")
+    ):
+        return "boolean"
+
+    # Check for link/URI type
+    if input_type == "link":
+        return "link"
+
+    # Default to string for textfield, textarea, controlled terms, etc.
     return "string"
 
 
