@@ -17,7 +17,9 @@ class TestRequestWithRetry:
         mock_response = MagicMock()
         mock_response.status_code = 200
 
-        with patch("src.cedar_mcp.external_api.requests.get", return_value=mock_response) as mock_get:
+        with patch(
+            "src.cedar_mcp.external_api.requests.get", return_value=mock_response
+        ) as mock_get:
             result = _request_with_retry(
                 "https://example.com", headers={"Authorization": "test"}
             )
