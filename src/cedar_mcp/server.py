@@ -4,21 +4,20 @@ import argparse
 import os
 import sys
 from typing import Any, Dict
-from urllib.parse import quote
 
-import requests
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .cache import BioPortalCache
 from .processing import clean_template_response, clean_template_instance_response
 from .external_api import (
-    get_children_from_branch,
-    get_class_tree,
-    get_instance,
-    search_instance_ids,
-    search_terms_from_branch,
-    search_terms_from_ontology,
+    async_get_children_from_branch,
+    async_get_class_tree,
+    async_get_instance,
+    async_get_template,
+    async_search_instance_ids,
+    async_search_terms_from_branch,
+    async_search_terms_from_ontology,
 )
 
 
@@ -64,7 +63,7 @@ def main():
 
     # Register MCP tools
     @mcp.tool()
-    def get_cedar_template(template_id: str) -> Dict[str, Any]:
+    async def get_cedar_template(template_id: str) -> Dict[str, Any]:
         """
         Get a template from the CEDAR repository.
 
@@ -75,25 +74,9 @@ def main():
         Returns:
             Template data from CEDAR, cleaned and transformed
         """
-        headers = {
-            "Accept": "application/json",
-            "Authorization": f"apiKey {CEDAR_API_KEY}",
-        }
-
-        # Encode the template ID for URL
-        encoded_template_id = quote(template_id, safe="")
-
-        # Build the URL with a simple query parameter
-        base_url = (
-            f"https://resource.metadatacenter.org/templates/{encoded_template_id}"
-        )
-
-        try:
-            response = requests.get(base_url, headers=headers)
-            response.raise_for_status()
-            template_data = response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
+        template_data = await async_get_template(template_id, CEDAR_API_KEY)
+        if "error" in template_data:
+            return template_data
 
         # Always clean the response
         template_data = clean_template_response(template_data)
@@ -101,7 +84,7 @@ def main():
         return template_data
 
     @mcp.tool()
-    def get_instances_based_on_template(
+    async def get_instances_based_on_template(
         template_id: str, limit: int = 10, offset: int = 0
     ) -> Dict[str, Any]:
         """
@@ -138,7 +121,7 @@ def main():
             }
 
         # Step 1: Search for instance IDs with pagination
-        search_result = search_instance_ids(
+        search_result = await async_search_instance_ids(
             template_id=template_id,
             cedar_api_key=CEDAR_API_KEY,
             limit=limit,
@@ -165,7 +148,7 @@ def main():
         failed_instances = []
 
         for instance_id in instance_ids:
-            instance_content = get_instance(instance_id, CEDAR_API_KEY)
+            instance_content = await async_get_instance(instance_id, CEDAR_API_KEY)
 
             # Check if this instance fetch failed
             if "error" in instance_content:
@@ -197,7 +180,7 @@ def main():
         return response
 
     @mcp.tool()
-    def term_search_from_branch(
+    async def term_search_from_branch(
         search_string: str,
         ontology_acronym: str,
         branch_iri: str,
@@ -228,7 +211,7 @@ def main():
         if cached is not None:
             return cached
 
-        result = search_terms_from_branch(
+        result = await async_search_terms_from_branch(
             search_string=search_string,
             ontology_acronym=ontology_acronym,
             branch_iri=branch_iri,
@@ -249,7 +232,7 @@ def main():
         return result
 
     @mcp.tool()
-    def term_search_from_ontology(
+    async def term_search_from_ontology(
         search_string: str,
         ontology_acronym: str,
     ) -> Dict[str, Any]:
@@ -276,7 +259,7 @@ def main():
         if cached is not None:
             return cached
 
-        result = search_terms_from_ontology(
+        result = await async_search_terms_from_ontology(
             search_string=search_string,
             ontology_acronym=ontology_acronym,
             bioportal_api_key=BIOPORTAL_API_KEY,
@@ -295,7 +278,7 @@ def main():
         return result
 
     @mcp.tool()
-    def get_branch_children(
+    async def get_branch_children(
         branch_iri: str,
         ontology_acronym: str,
     ) -> Dict[str, Any]:
@@ -315,7 +298,7 @@ def main():
         Returns:
             BioPortal response containing child terms with their prefLabels
         """
-        result = get_children_from_branch(
+        result = await async_get_children_from_branch(
             branch_iri=branch_iri,
             ontology_acronym=ontology_acronym,
             bioportal_api_key=BIOPORTAL_API_KEY,
@@ -327,7 +310,7 @@ def main():
         return result
 
     @mcp.tool()
-    def get_ontology_class_tree(
+    async def get_ontology_class_tree(
         class_iri: str,
         ontology_acronym: str,
     ) -> Dict[str, Any]:
@@ -355,7 +338,7 @@ def main():
         if cached is not None:
             return cached
 
-        result = get_class_tree(
+        result = await async_get_class_tree(
             class_iri=class_iri,
             ontology_acronym=ontology_acronym,
             bioportal_api_key=BIOPORTAL_API_KEY,
