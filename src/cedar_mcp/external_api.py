@@ -254,3 +254,51 @@ def get_instance(instance_id: str, cedar_api_key: str) -> Dict[str, Any]:
         return {"error": f"Failed to fetch CEDAR instance content: {str(e)}"}
     except (KeyError, ValueError) as e:
         return {"error": f"Failed to parse CEDAR instance response: {str(e)}"}
+
+
+def get_class_tree(
+    class_iri: str, ontology_acronym: str, bioportal_api_key: str
+) -> Dict[str, Any]:
+    """
+    Fetch the hierarchical tree structure for a given ontology class from BioPortal.
+
+    Args:
+        class_iri: IRI of the class to get the tree for
+                  (e.g., "http://purl.obolibrary.org/obo/MONDO_0005180")
+        ontology_acronym: Ontology acronym (e.g., "MONDO", "CHEBI")
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing the tree nodes list under the "tree" key,
+        or error information
+    """
+    try:
+        # URL encode the class IRI for safe inclusion in URL
+        encoded_iri = quote(class_iri, safe="")
+
+        # Build the BioPortal API URL
+        base_url = f"https://data.bioontology.org/ontologies/{ontology_acronym}/classes/{encoded_iri}/tree"
+
+        # Set query parameters
+        params = {
+            "display_links": "false",
+            "display_context": "false",
+            "include_views": "false",
+        }
+
+        # Set authorization header
+        headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
+
+        # Make the API request
+        response = requests.get(base_url, headers=headers, params=params)
+        response.raise_for_status()
+
+        # Wrap the list response in a dict for cache compatibility
+        return {"tree": response.json()}
+
+    except requests.exceptions.RequestException as e:
+        # Handle HTTP errors gracefully
+        return {"error": f"Failed to fetch class tree from BioPortal: {str(e)}"}
+    except (KeyError, ValueError) as e:
+        # Handle JSON parsing errors
+        return {"error": f"Failed to parse BioPortal response: {str(e)}"}

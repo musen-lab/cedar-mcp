@@ -14,6 +14,7 @@ from .cache import BioPortalCache
 from .processing import clean_template_response, clean_template_instance_response
 from .external_api import (
     get_children_from_branch,
+    get_class_tree,
     get_instance,
     search_instance_ids,
     search_terms_from_branch,
@@ -322,6 +323,53 @@ def main():
 
         if "error" in result:
             return {"error": f"Get branch children failed: {result['error']}"}
+
+        return result
+
+    @mcp.tool()
+    def get_ontology_class_tree(
+        class_iri: str,
+        ontology_acronym: str,
+    ) -> Dict[str, Any]:
+        """
+        Fetch the hierarchical tree structure for a given class in an ontology.
+
+        Use this tool to retrieve the ancestor path and sibling nodes for a
+        specific class IRI in a BioPortal ontology. This is useful for
+        understanding where a term sits in the ontology hierarchy.
+
+        Args:
+            class_iri: IRI of the class to get the tree for
+                      (e.g., "http://purl.obolibrary.org/obo/MONDO_0005180")
+            ontology_acronym: Ontology acronym to search within
+                             (e.g., "MONDO", "CHEBI")
+
+        Returns:
+            BioPortal response containing the class tree hierarchy
+        """
+        cached = cache.get(
+            "get_class_tree",
+            class_iri=class_iri,
+            ontology_acronym=ontology_acronym,
+        )
+        if cached is not None:
+            return cached
+
+        result = get_class_tree(
+            class_iri=class_iri,
+            ontology_acronym=ontology_acronym,
+            bioportal_api_key=BIOPORTAL_API_KEY,
+        )
+
+        if "error" in result:
+            return {"error": f"Get class tree failed: {result['error']}"}
+
+        cache.set(
+            "get_class_tree",
+            result,
+            class_iri=class_iri,
+            ontology_acronym=ontology_acronym,
+        )
 
         return result
 

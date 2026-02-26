@@ -74,7 +74,10 @@ class FieldDefinition(BaseModel):
     name: str = Field(..., description="Field name")
     description: str = Field(..., description="Field description")
     label: str = Field(..., description="Human-readable label")
-    type: str = Field(..., description="Data type (string, integer, decimal, boolean)")
+    type: str = Field(
+        ...,
+        description="Data type (string, integer, decimal, boolean, date, datetime, time, link)",
+    )
     required: bool = Field(False, description="Whether the field is required")
     multivalued: bool = Field(
         False, description="Whether this field represents an array"

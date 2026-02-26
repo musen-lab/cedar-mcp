@@ -4,6 +4,7 @@ import pytest
 from typing import Dict
 from src.cedar_mcp.external_api import (
     get_children_from_branch,
+    get_class_tree,
     search_instance_ids,
     get_instance,
     search_terms_from_branch,
@@ -298,3 +299,62 @@ class TestSearchTermsFromOntology:
 
         assert "error" in result
         assert "Failed to search BioPortal" in result["error"]
+
+
+@pytest.mark.integration
+class TestGetClassTree:
+    """Integration tests for get_class_tree function."""
+
+    def test_get_class_tree_valid(self, bioportal_api_key: str):
+        """Test fetching class tree for a valid class IRI."""
+        result = get_class_tree(
+            class_iri="http://purl.obolibrary.org/obo/MONDO_0005180",
+            ontology_acronym="MONDO",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        # Should not contain error
+        assert "error" not in result
+
+        # The tree response is wrapped in a dict with "tree" key
+        assert "tree" in result
+        assert isinstance(result["tree"], list)
+        assert len(result["tree"]) > 0
+
+        # Each node should have expected fields
+        first_node = result["tree"][0]
+        assert "@id" in first_node
+        assert "prefLabel" in first_node
+
+    def test_get_class_tree_invalid_iri(self, bioportal_api_key: str):
+        """Test fetching class tree with invalid IRI returns error."""
+        result = get_class_tree(
+            class_iri="http://invalid.example.com/nonexistent",
+            ontology_acronym="MONDO",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" in result
+        assert "Failed to fetch class tree from BioPortal" in result["error"]
+
+    def test_get_class_tree_invalid_ontology(self, bioportal_api_key: str):
+        """Test fetching class tree with invalid ontology returns error."""
+        result = get_class_tree(
+            class_iri="http://purl.obolibrary.org/obo/MONDO_0005180",
+            ontology_acronym="NONEXISTENT_ONTO",
+            bioportal_api_key=bioportal_api_key,
+        )
+
+        assert "error" in result
+        assert "Failed to fetch class tree from BioPortal" in result["error"]
+
+    def test_get_class_tree_invalid_api_key(self):
+        """Test fetching class tree with invalid API key returns error."""
+        result = get_class_tree(
+            class_iri="http://purl.obolibrary.org/obo/MONDO_0005180",
+            ontology_acronym="MONDO",
+            bioportal_api_key="invalid-api-key-12345",
+        )
+
+        assert "error" in result
+        assert "Failed to fetch class tree from BioPortal" in result["error"]
