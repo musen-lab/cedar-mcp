@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
-from typing import Any, Dict, cast
+import logging
+import time
+from typing import Any, Dict, Optional, cast
 from urllib.parse import quote
+
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 def get_children_from_branch(
@@ -38,8 +43,8 @@ def get_children_from_branch(
         # Set authorization header
         headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
 
-        # Make the API request
-        response = requests.get(base_url, headers=headers, params=params)
+        # Make the API request with retry on 429
+        response = _request_with_retry(base_url, headers=headers, params=params)
         response.raise_for_status()
 
         # Return the raw JSON response from BioPortal
@@ -86,7 +91,7 @@ def search_terms_from_branch(
 
         headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
 
-        response = requests.get(base_url, headers=headers, params=params)
+        response = _request_with_retry(base_url, headers=headers, params=params)
         response.raise_for_status()
 
         return response.json()
@@ -127,7 +132,7 @@ def search_terms_from_ontology(
 
         headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
 
-        response = requests.get(base_url, headers=headers, params=params)
+        response = _request_with_retry(base_url, headers=headers, params=params)
         response.raise_for_status()
 
         return response.json()
@@ -177,8 +182,8 @@ def search_instance_ids(
             "offset": offset,
         }
 
-        # Make the API request
-        response = requests.get(
+        # Make the API request with retry on 429
+        response = _request_with_retry(
             base_url, headers=headers, params=cast(Any, params), timeout=30
         )
         response.raise_for_status()
@@ -243,8 +248,8 @@ def get_instance(instance_id: str, cedar_api_key: str) -> Dict[str, Any]:
             "Authorization": f"apiKey {cedar_api_key}",
         }
 
-        # Make the API request with timeout
-        response = requests.get(base_url, headers=headers, timeout=30)
+        # Make the API request with retry on 429
+        response = _request_with_retry(base_url, headers=headers, timeout=30)
         response.raise_for_status()
 
         # Return the raw JSON response from CEDAR
@@ -289,8 +294,8 @@ def get_class_tree(
         # Set authorization header
         headers = {"Authorization": f"apiKey token={bioportal_api_key}"}
 
-        # Make the API request
-        response = requests.get(base_url, headers=headers, params=params)
+        # Make the API request with retry on 429
+        response = _request_with_retry(base_url, headers=headers, params=params)
         response.raise_for_status()
 
         # Wrap the list response in a dict for cache compatibility
@@ -302,3 +307,101 @@ def get_class_tree(
     except (KeyError, ValueError) as e:
         # Handle JSON parsing errors
         return {"error": f"Failed to parse BioPortal response: {str(e)}"}
+
+
+def get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
+    """
+    Fetch a template from the CEDAR repository.
+
+    Args:
+        template_id: The template ID or full URL from CEDAR repository
+                    (e.g., "https://repo.metadatacenter.org/templates/...")
+        cedar_api_key: CEDAR API key for authentication
+
+    Returns:
+        Dictionary containing raw CEDAR template data or error information
+    """
+    try:
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"apiKey {cedar_api_key}",
+        }
+
+        # Encode the template ID for URL
+        encoded_template_id = quote(template_id, safe="")
+
+        # Build the URL
+        base_url = (
+            f"https://resource.metadatacenter.org/templates/{encoded_template_id}"
+        )
+
+        response = _request_with_retry(base_url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
+
+
+def _request_with_retry(
+    url: str,
+    headers: Dict[str, str],
+    params: Optional[Dict[str, Any]] = None,
+    timeout: Optional[int] = None,
+    max_retries: int = 5,
+    initial_delay: float = 1.0,
+    max_delay: float = 60.0,
+) -> requests.Response:
+    """
+    Make an HTTP GET request with retry logic for HTTP 429 (Too Many Requests).
+
+    Uses exponential backoff, respecting the Retry-After header when present.
+
+    Args:
+        url: The URL to request
+        headers: HTTP headers to include
+        params: Optional query parameters
+        timeout: Optional request timeout in seconds
+        max_retries: Maximum number of retries on 429 responses
+        initial_delay: Initial delay in seconds before first retry
+        max_delay: Maximum delay in seconds between retries
+
+    Returns:
+        The successful HTTP response
+
+    Raises:
+        requests.exceptions.HTTPError: If all retries are exhausted or a non-429 error occurs
+    """
+    for attempt in range(max_retries + 1):
+        response = requests.get(url, headers=headers, params=params, timeout=timeout)
+        if response.status_code != 429:
+            return response
+
+        if attempt == max_retries:
+            # All retries exhausted — raise as HTTP error
+            response.raise_for_status()
+
+        # Determine wait time from Retry-After header or exponential backoff
+        retry_after = response.headers.get("Retry-After")
+        if retry_after is not None:
+            try:
+                delay = float(retry_after)
+            except ValueError:
+                delay = initial_delay * (2**attempt)
+        else:
+            delay = initial_delay * (2**attempt)
+
+        # Cap the delay to avoid excessively long waits
+        delay = min(delay, max_delay)
+
+        logger.info(
+            "Received 429 from %s, retrying in %.1fs (attempt %d/%d)",
+            url,
+            delay,
+            attempt + 1,
+            max_retries,
+        )
+        time.sleep(delay)
+
+    # Should not reach here, but satisfy type checker
+    return response
