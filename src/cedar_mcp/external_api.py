@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import asyncio
 import logging
 import time
 from typing import Any, Dict, Optional, cast
@@ -58,6 +59,28 @@ def get_children_from_branch(
         return {"error": f"Failed to parse BioPortal response: {str(e)}"}
 
 
+async def async_get_children_from_branch(
+    branch_iri: str, ontology_acronym: str, bioportal_api_key: str
+) -> Dict[str, Any]:
+    """
+    Async wrapper around get_children_from_branch.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        branch_iri: IRI of the branch to get children for
+        ontology_acronym: Ontology acronym (e.g., "HRAVS")
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing raw BioPortal API response or error information
+    """
+    return await asyncio.to_thread(
+        get_children_from_branch, branch_iri, ontology_acronym, bioportal_api_key
+    )
+
+
 def search_terms_from_branch(
     search_string: str,
     ontology_acronym: str,
@@ -102,6 +125,36 @@ def search_terms_from_branch(
         return {"error": f"Failed to parse BioPortal search response: {str(e)}"}
 
 
+async def async_search_terms_from_branch(
+    search_string: str,
+    ontology_acronym: str,
+    branch_iri: str,
+    bioportal_api_key: str,
+) -> Dict[str, Any]:
+    """
+    Async wrapper around search_terms_from_branch.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        search_string: The term label or keyword to search for
+        ontology_acronym: Ontology acronym (e.g., "CHEBI", "HRAVS")
+        branch_iri: IRI of the branch to restrict the search to
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing raw BioPortal search response or error information
+    """
+    return await asyncio.to_thread(
+        search_terms_from_branch,
+        search_string,
+        ontology_acronym,
+        branch_iri,
+        bioportal_api_key,
+    )
+
+
 def search_terms_from_ontology(
     search_string: str,
     ontology_acronym: str,
@@ -141,6 +194,33 @@ def search_terms_from_ontology(
         return {"error": f"Failed to search BioPortal: {str(e)}"}
     except (KeyError, ValueError) as e:
         return {"error": f"Failed to parse BioPortal search response: {str(e)}"}
+
+
+async def async_search_terms_from_ontology(
+    search_string: str,
+    ontology_acronym: str,
+    bioportal_api_key: str,
+) -> Dict[str, Any]:
+    """
+    Async wrapper around search_terms_from_ontology.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        search_string: The term label or keyword to search for
+        ontology_acronym: Ontology acronym (e.g., "NCIT", "CHEBI")
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing raw BioPortal search response or error information
+    """
+    return await asyncio.to_thread(
+        search_terms_from_ontology,
+        search_string,
+        ontology_acronym,
+        bioportal_api_key,
+    )
 
 
 def search_instance_ids(
@@ -224,6 +304,32 @@ def search_instance_ids(
         return {"error": f"Failed to parse CEDAR search response: {str(e)}"}
 
 
+async def async_search_instance_ids(
+    template_id: str,
+    cedar_api_key: str,
+    limit: int = 10,
+    offset: int = 0,
+) -> Dict[str, Any]:
+    """
+    Async wrapper around search_instance_ids.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        template_id: Template ID (UUID or full URL)
+        cedar_api_key: CEDAR API key for authentication
+        limit: Number of instances to fetch
+        offset: Starting position
+
+    Returns:
+        Dictionary containing instance_ids, pagination, or error
+    """
+    return await asyncio.to_thread(
+        search_instance_ids, template_id, cedar_api_key, limit, offset
+    )
+
+
 def get_instance(instance_id: str, cedar_api_key: str) -> Dict[str, Any]:
     """
     Fetch the full content of a CEDAR template instance.
@@ -259,6 +365,23 @@ def get_instance(instance_id: str, cedar_api_key: str) -> Dict[str, Any]:
         return {"error": f"Failed to fetch CEDAR instance content: {str(e)}"}
     except (KeyError, ValueError) as e:
         return {"error": f"Failed to parse CEDAR instance response: {str(e)}"}
+
+
+async def async_get_instance(instance_id: str, cedar_api_key: str) -> Dict[str, Any]:
+    """
+    Async wrapper around get_instance.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        instance_id: Full instance URL
+        cedar_api_key: CEDAR API key for authentication
+
+    Returns:
+        Dictionary containing instance content or error information
+    """
+    return await asyncio.to_thread(get_instance, instance_id, cedar_api_key)
 
 
 def get_class_tree(
@@ -309,6 +432,30 @@ def get_class_tree(
         return {"error": f"Failed to parse BioPortal response: {str(e)}"}
 
 
+async def async_get_class_tree(
+    class_iri: str,
+    ontology_acronym: str,
+    bioportal_api_key: str,
+) -> Dict[str, Any]:
+    """
+    Async wrapper around get_class_tree.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        class_iri: IRI of the class to get the tree for
+        ontology_acronym: Ontology acronym (e.g., "MONDO", "CHEBI")
+        bioportal_api_key: BioPortal API key for authentication
+
+    Returns:
+        Dictionary containing the tree nodes list or error information
+    """
+    return await asyncio.to_thread(
+        get_class_tree, class_iri, ontology_acronym, bioportal_api_key
+    )
+
+
 def get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
     """
     Fetch a template from the CEDAR repository.
@@ -341,6 +488,23 @@ def get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
 
     except requests.exceptions.RequestException as e:
         return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
+
+
+async def async_get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
+    """
+    Async wrapper around get_template.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        template_id: The template ID or full URL from CEDAR repository
+        cedar_api_key: CEDAR API key for authentication
+
+    Returns:
+        Dictionary containing raw CEDAR template data or error information
+    """
+    return await asyncio.to_thread(get_template, template_id, cedar_api_key)
 
 
 def _request_with_retry(
