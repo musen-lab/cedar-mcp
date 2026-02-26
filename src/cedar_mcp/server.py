@@ -4,9 +4,7 @@ import argparse
 import os
 import sys
 from typing import Any, Dict
-from urllib.parse import quote
 
-import requests
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
@@ -16,6 +14,7 @@ from .external_api import (
     get_children_from_branch,
     get_class_tree,
     get_instance,
+    get_template,
     search_instance_ids,
     search_terms_from_branch,
     search_terms_from_ontology,
@@ -75,25 +74,9 @@ def main():
         Returns:
             Template data from CEDAR, cleaned and transformed
         """
-        headers = {
-            "Accept": "application/json",
-            "Authorization": f"apiKey {CEDAR_API_KEY}",
-        }
-
-        # Encode the template ID for URL
-        encoded_template_id = quote(template_id, safe="")
-
-        # Build the URL with a simple query parameter
-        base_url = (
-            f"https://resource.metadatacenter.org/templates/{encoded_template_id}"
-        )
-
-        try:
-            response = requests.get(base_url, headers=headers)
-            response.raise_for_status()
-            template_data = response.json()
-        except requests.exceptions.RequestException as e:
-            return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
+        template_data = get_template(template_id, CEDAR_API_KEY)
+        if "error" in template_data:
+            return template_data
 
         # Always clean the response
         template_data = clean_template_response(template_data)
