@@ -12,7 +12,7 @@ Before using this MCP server, you'll need API keys from:
 - Navigate to: Profile → API Key
 - Copy your API key
 
-### BioPortal API Key  
+### BioPortal API Key
 - Go to [bioportal.bioontology.org](https://bioportal.bioontology.org)
 - Create an account or log in
 - Navigate to: Account Settings → API Key
@@ -25,22 +25,19 @@ Before using this MCP server, you'll need API keys from:
 Run directly without installation using `uvx`:
 
 ```bash
-uvx --from git+https://github.com/musen-lab/cedar-mcp.git cedar-mcp \
+uvx cedar-mcp \
   --cedar-api-key "your-cedar-key" \
   --bioportal-api-key "your-bioportal-key"
 ```
 
-### Option 2: Local Installation with UV
+### Option 2: Using pip
 
-Clone and run using `uv`:
+Install from PyPI and run:
 
 ```bash
-# Clone the repository
-git clone https://github.com/musen-lab/cedar-mcp.git
-cd cedar-mcp
+pip install cedar-mcp
 
-# Install dependencies and run
-uv run python -m cedar_mcp.server \
+cedar-mcp \
   --cedar-api-key "your-cedar-key" \
   --bioportal-api-key "your-bioportal-key"
 ```
@@ -55,10 +52,10 @@ export CEDAR_API_KEY="your-cedar-key"
 export BIOPORTAL_API_KEY="your-bioportal-key"
 
 # Run with uvx
-uvx --from git+https://github.com/musen-lab/cedar-mcp.git cedar-mcp
+uvx cedar-mcp
 
-# Or run locally
-uv run python -m cedar_mcp.server
+# Or if installed via pip
+cedar-mcp
 ```
 
 ## Using with Claude Code
@@ -66,8 +63,7 @@ uv run python -m cedar_mcp.server
 Add the CEDAR MCP server to Claude Code:
 
 ```bash
-# Add using uvx (from Git repository)
-claude mcp add cedar-mcp --uvx --from git+https://github.com/musen-lab/cedar-mcp.git \
+claude mcp add cedar-mcp --uvx \
   --cedar-api-key "your-cedar-key" \
   --bioportal-api-key "your-bioportal-key"
 ```
@@ -85,8 +81,6 @@ To use with Claude Desktop app:
     "cedar-mcp": {
       "command": "uvx",
       "args": [
-        "--from", 
-        "git+https://github.com/musen-lab/cedar-mcp.git",
         "cedar-mcp"
       ],
       "env": {
@@ -168,3 +162,7 @@ Contributions are welcome! Please ensure all tests pass before submitting a Pull
 ```bash
 python run_tests.py --integration
 ```
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

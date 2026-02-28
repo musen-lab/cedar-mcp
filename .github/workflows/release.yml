@@ -9,50 +9,50 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build Package
-    
+
     steps:
     - uses: actions/checkout@v6
-    
+
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
         python-version: '3.10'
-    
+
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
         pip install build twine
-    
+
     - name: Build package
       run: python -m build
-    
+
     - name: Verify package
       run: twine check dist/*
-    
+
     - name: Upload build artifacts
       uses: actions/upload-artifact@v6
       with:
         name: dist-packages
         path: dist/
-  
+
   create-github-release:
     runs-on: ubuntu-latest
     name: Create GitHub Release
     needs: build
-    
+
     steps:
     - uses: actions/checkout@v6
-    
+
     - name: Download build artifacts
       uses: actions/download-artifact@v7
       with:
         name: dist-packages
         path: dist/
-    
+
     - name: Get tag name
       id: tag
       run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-    
+
     - name: Create GitHub Release
       id: create-release
       uses: actions/create-release@v1
@@ -63,28 +63,43 @@ jobs:
         release_name: Release ${{ steps.tag.outputs.tag }}
         body: |
           ## Changes in ${{ steps.tag.outputs.tag }}
-          
+
           ### Installation
-          
-          Install from source using uv/uvx:
+
+          Install from PyPI:
           ```bash
-          uvx --from git+https://github.com/${{ github.repository }}.git@${{ steps.tag.outputs.tag }} cedar-mcp
+          pip install cedar-mcp
           ```
-          
-          Or clone and install locally:
+
+          Or with uvx:
           ```bash
-          git clone https://github.com/${{ github.repository }}.git
-          cd cedar-mcp
-          git checkout ${{ steps.tag.outputs.tag }}
-          uv run python -m cedar_mcp.server
+          uvx cedar-mcp
           ```
-          
+
           ### Usage
-          
+
           See the [README](https://github.com/${{ github.repository }}/blob/${{ steps.tag.outputs.tag }}/README.md) for usage instructions.
-          
+
           ### What's New
-          
+
           Please see the commit history for detailed changes in this release.
         draft: false
         prerelease: false
+
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish to PyPI
+    needs: build
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v7
+      with:
+        name: dist-packages
+        path: dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
