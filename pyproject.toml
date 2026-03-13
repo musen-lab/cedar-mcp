@@ -1,6 +1,6 @@
 [project]
 name = "cedar-mcp"
-version = "1.0.0"
+version = "1.1.0"
 description = "A CEDAR MCP server"
 readme = "README.md"
 license = {text = "MIT"}
