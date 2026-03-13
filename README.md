@@ -20,14 +20,19 @@ Before using this MCP server, you'll need API keys from:
 
 ## Running the CEDAR MCP Server
 
+Set your API keys as environment variables:
+
+```bash
+export CEDAR_API_KEY="your-cedar-key"
+export BIOPORTAL_API_KEY="your-bioportal-key"
+```
+
 ### Option 1: Using UVX (Recommended)
 
 Run directly without installation using `uvx`:
 
 ```bash
-uvx cedar-mcp \
-  --cedar-api-key "your-cedar-key" \
-  --bioportal-api-key "your-bioportal-key"
+uvx cedar-mcp
 ```
 
 ### Option 2: Using pip
@@ -36,27 +41,10 @@ Install from PyPI and run:
 
 ```bash
 pip install cedar-mcp
-
-cedar-mcp \
-  --cedar-api-key "your-cedar-key" \
-  --bioportal-api-key "your-bioportal-key"
-```
-
-### Option 3: Using Environment Variables
-
-Set environment variables instead of command-line arguments:
-
-```bash
-# Set environment variables
-export CEDAR_API_KEY="your-cedar-key"
-export BIOPORTAL_API_KEY="your-bioportal-key"
-
-# Run with uvx
-uvx cedar-mcp
-
-# Or if installed via pip
 cedar-mcp
 ```
+
+> **Note:** The `--cedar-api-key` and `--bioportal-api-key` CLI flags are deprecated and will be removed in a future release. Use environment variables instead.
 
 ### Transport Options
 
@@ -64,14 +52,10 @@ By default, the server uses `stdio` transport. You can also run it as an HTTP se
 
 ```bash
 # SSE transport on default host/port (127.0.0.1:8000)
-cedar-mcp --transport sse \
-  --cedar-api-key "your-cedar-key" \
-  --bioportal-api-key "your-bioportal-key"
+cedar-mcp --transport sse
 
 # Streamable HTTP on custom host/port
-cedar-mcp --transport streamable-http --host 0.0.0.0 --port 9000 \
-  --cedar-api-key "your-cedar-key" \
-  --bioportal-api-key "your-bioportal-key"
+cedar-mcp --transport streamable-http --host 0.0.0.0 --port 9000
 ```
 
 | Flag | Choices | Default | Description |
@@ -85,9 +69,7 @@ cedar-mcp --transport streamable-http --host 0.0.0.0 --port 9000 \
 Add the CEDAR MCP server to Claude Code:
 
 ```bash
-claude mcp add cedar-mcp --uvx \
-  --cedar-api-key "your-cedar-key" \
-  --bioportal-api-key "your-bioportal-key"
+claude mcp add cedar-mcp --uvx -e CEDAR_API_KEY=your-cedar-key -e BIOPORTAL_API_KEY=your-bioportal-key
 ```
 
 ## Using with Claude Desktop

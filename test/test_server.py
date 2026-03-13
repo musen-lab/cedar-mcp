@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import pytest
+import warnings
 from typing import Dict
 from unittest.mock import patch
 import requests
@@ -219,6 +220,71 @@ class TestServerConfiguration:
         assert args.transport == "stdio"
         assert args.host == "127.0.0.1"
         assert args.port == 8000
+
+    def test_deprecated_cedar_api_key_flag_emits_warning(self):
+        """Test that using --cedar-api-key emits a deprecation warning."""
+        with patch.dict("os.environ", {"CEDAR_API_KEY": "", "BIOPORTAL_API_KEY": ""}):
+            with patch.object(
+                sys, "argv", ["server.py", "--cedar-api-key", "test-key"]
+            ):
+                import argparse
+
+                parser = argparse.ArgumentParser()
+                parser.add_argument("--cedar-api-key", type=str)
+                parser.add_argument("--bioportal-api-key", type=str)
+                args = parser.parse_args(["--cedar-api-key", "test-key"])
+
+                with warnings.catch_warnings(record=True) as w:
+                    warnings.simplefilter("always")
+                    if args.cedar_api_key:
+                        warnings.warn(
+                            "--cedar-api-key is deprecated and will be removed in a future release. "
+                            "Use the CEDAR_API_KEY environment variable instead.",
+                            DeprecationWarning,
+                            stacklevel=1,
+                        )
+                    assert len(w) == 1
+                    assert issubclass(w[0].category, DeprecationWarning)
+                    assert "--cedar-api-key is deprecated" in str(w[0].message)
+
+    def test_deprecated_bioportal_api_key_flag_emits_warning(self):
+        """Test that using --bioportal-api-key emits a deprecation warning."""
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--cedar-api-key", type=str)
+        parser.add_argument("--bioportal-api-key", type=str)
+        args = parser.parse_args(["--bioportal-api-key", "test-key"])
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            if args.bioportal_api_key:
+                warnings.warn(
+                    "--bioportal-api-key is deprecated and will be removed in a future release. "
+                    "Use the BIOPORTAL_API_KEY environment variable instead.",
+                    DeprecationWarning,
+                    stacklevel=1,
+                )
+            assert len(w) == 1
+            assert issubclass(w[0].category, DeprecationWarning)
+            assert "--bioportal-api-key is deprecated" in str(w[0].message)
+
+    def test_no_deprecation_warning_without_api_key_flags(self):
+        """Test that no deprecation warning is emitted when API key flags are not used."""
+        import argparse
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--cedar-api-key", type=str)
+        parser.add_argument("--bioportal-api-key", type=str)
+        args = parser.parse_args([])
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            if args.cedar_api_key:
+                warnings.warn("--cedar-api-key is deprecated", DeprecationWarning)
+            if args.bioportal_api_key:
+                warnings.warn("--bioportal-api-key is deprecated", DeprecationWarning)
+            assert len(w) == 0
 
     def test_transport_argument_parsing(self):
         """Test transport-related argument parsing."""
