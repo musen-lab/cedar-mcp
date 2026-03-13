@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import warnings
 from typing import Any, Dict
 
 from dotenv import load_dotenv
@@ -34,27 +35,63 @@ def main():
     parser.add_argument(
         "--cedar-api-key",
         type=str,
-        help="CEDAR API key to use instead of environment variable",
+        help="(Deprecated) CEDAR API key. Use CEDAR_API_KEY environment variable instead.",
     )
     parser.add_argument(
         "--bioportal-api-key",
         type=str,
-        help="BioPortal API key to use instead of environment variable",
+        help="(Deprecated) BioPortal API key. Use BIOPORTAL_API_KEY environment variable instead.",
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind to for HTTP transports (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to for HTTP transports (default: 8000)",
     )
     args = parser.parse_args()
+
+    # Emit deprecation warnings for CLI key flags
+    if args.cedar_api_key:
+        warnings.warn(
+            "--cedar-api-key is deprecated and will be removed in a future release. "
+            "Use the CEDAR_API_KEY environment variable instead.",
+            DeprecationWarning,
+            stacklevel=1,
+        )
+    if args.bioportal_api_key:
+        warnings.warn(
+            "--bioportal-api-key is deprecated and will be removed in a future release. "
+            "Use the BIOPORTAL_API_KEY environment variable instead.",
+            DeprecationWarning,
+            stacklevel=1,
+        )
 
     # Use command-line argument if provided, otherwise use environment variable
     CEDAR_API_KEY = args.cedar_api_key or os.getenv("CEDAR_API_KEY")
     if not CEDAR_API_KEY:
         print(
-            "Error: CEDAR API key not provided. Please set CEDAR_API_KEY environment variable or use --cedar-api-key."
+            "Error: CEDAR API key not provided. "
+            "Please set the CEDAR_API_KEY environment variable."
         )
         sys.exit(1)
 
     BIOPORTAL_API_KEY = args.bioportal_api_key or os.getenv("BIOPORTAL_API_KEY")
     if not BIOPORTAL_API_KEY:
         print(
-            "Error: BioPortal API key not provided. Please set BIOPORTAL_API_KEY environment variable or use --bioportal-api-key."
+            "Error: BioPortal API key not provided. "
+            "Please set the BIOPORTAL_API_KEY environment variable."
         )
         sys.exit(1)
 
@@ -385,8 +422,13 @@ def main():
         return cache.clear_all()
 
     # Start the MCP server
-    print("Starting CEDAR MCP server...")
-    mcp.run()
+    if args.transport == "stdio":
+        print("Starting CEDAR MCP server (stdio)...")
+    else:
+        print(
+            f"Starting CEDAR MCP server ({args.transport}) at http://{args.host}:{args.port} ..."
+        )
+    mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
