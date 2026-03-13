@@ -304,9 +304,12 @@ class TestServerConfiguration:
         # Test SSE transport with custom host/port
         args = parser.parse_args(
             [
-                "--transport", "sse",
-                "--host", "0.0.0.0",
-                "--port", "9000",
+                "--transport",
+                "sse",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "9000",
             ]
         )
         assert args.transport == "sse"
