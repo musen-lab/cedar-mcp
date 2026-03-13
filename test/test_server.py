@@ -196,6 +196,13 @@ class TestServerConfiguration:
         parser = argparse.ArgumentParser(description="CEDAR MCP Python Server")
         parser.add_argument("--cedar-api-key", type=str, help="CEDAR API key")
         parser.add_argument("--bioportal-api-key", type=str, help="BioPortal API key")
+        parser.add_argument(
+            "--transport",
+            choices=["stdio", "sse", "streamable-http"],
+            default="stdio",
+        )
+        parser.add_argument("--host", type=str, default="127.0.0.1")
+        parser.add_argument("--port", type=int, default=8000)
 
         # Test parsing with both arguments
         args = parser.parse_args(
@@ -209,6 +216,56 @@ class TestServerConfiguration:
 
         assert args.cedar_api_key == "test-cedar-key"
         assert args.bioportal_api_key == "test-bioportal-key"
+        assert args.transport == "stdio"
+        assert args.host == "127.0.0.1"
+        assert args.port == 8000
+
+    def test_transport_argument_parsing(self):
+        """Test transport-related argument parsing."""
+        import argparse
+
+        parser = argparse.ArgumentParser(description="CEDAR MCP Python Server")
+        parser.add_argument("--cedar-api-key", type=str)
+        parser.add_argument("--bioportal-api-key", type=str)
+        parser.add_argument(
+            "--transport",
+            choices=["stdio", "sse", "streamable-http"],
+            default="stdio",
+        )
+        parser.add_argument("--host", type=str, default="127.0.0.1")
+        parser.add_argument("--port", type=int, default=8000)
+
+        # Test SSE transport with custom host/port
+        args = parser.parse_args(
+            [
+                "--transport", "sse",
+                "--host", "0.0.0.0",
+                "--port", "9000",
+            ]
+        )
+        assert args.transport == "sse"
+        assert args.host == "0.0.0.0"
+        assert args.port == 9000
+
+        # Test streamable-http transport
+        args = parser.parse_args(["--transport", "streamable-http"])
+        assert args.transport == "streamable-http"
+        assert args.host == "127.0.0.1"
+        assert args.port == 8000
+
+    def test_invalid_transport_argument(self):
+        """Test that invalid transport choice is rejected."""
+        import argparse
+
+        parser = argparse.ArgumentParser(description="CEDAR MCP Python Server")
+        parser.add_argument(
+            "--transport",
+            choices=["stdio", "sse", "streamable-http"],
+            default="stdio",
+        )
+
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--transport", "invalid"])
 
     def test_api_key_validation_logic(self):
         """Test API key validation logic."""

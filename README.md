@@ -58,6 +58,28 @@ uvx cedar-mcp
 cedar-mcp
 ```
 
+### Transport Options
+
+By default, the server uses `stdio` transport. You can also run it as an HTTP server using SSE or streamable-http transports:
+
+```bash
+# SSE transport on default host/port (127.0.0.1:8000)
+cedar-mcp --transport sse \
+  --cedar-api-key "your-cedar-key" \
+  --bioportal-api-key "your-bioportal-key"
+
+# Streamable HTTP on custom host/port
+cedar-mcp --transport streamable-http --host 0.0.0.0 --port 9000 \
+  --cedar-api-key "your-cedar-key" \
+  --bioportal-api-key "your-bioportal-key"
+```
+
+| Flag | Choices | Default | Description |
+|------|---------|---------|-------------|
+| `--transport` | `stdio`, `sse`, `streamable-http` | `stdio` | Transport protocol |
+| `--host` | — | `127.0.0.1` | Host to bind to (HTTP transports only) |
+| `--port` | — | `8000` | Port to bind to (HTTP transports only) |
+
 ## Using with Claude Code
 
 Add the CEDAR MCP server to Claude Code:

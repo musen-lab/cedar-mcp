@@ -41,6 +41,24 @@ def main():
         type=str,
         help="BioPortal API key to use instead of environment variable",
     )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind to for HTTP transports (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind to for HTTP transports (default: 8000)",
+    )
     args = parser.parse_args()
 
     # Use command-line argument if provided, otherwise use environment variable
@@ -385,8 +403,11 @@ def main():
         return cache.clear_all()
 
     # Start the MCP server
-    print("Starting CEDAR MCP server...")
-    mcp.run()
+    if args.transport == "stdio":
+        print("Starting CEDAR MCP server (stdio)...")
+    else:
+        print(f"Starting CEDAR MCP server ({args.transport}) at http://{args.host}:{args.port} ...")
+    mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
