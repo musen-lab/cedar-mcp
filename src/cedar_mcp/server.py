@@ -428,7 +428,10 @@ def main():
         print(
             f"Starting CEDAR MCP server ({args.transport}) at http://{args.host}:{args.port} ..."
         )
-    mcp.run(transport=args.transport, host=args.host, port=args.port)
+    if args.transport == "stdio":
+        mcp.run(transport=args.transport)
+    else:
+        mcp.run(transport=args.transport, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
