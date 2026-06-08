@@ -1,5 +1,5 @@
 # Core dependencies for CEDAR MCP server
-fastmcp>=2.11.3
+fastmcp>=3.4.2
 requests>=2.32.0
 python-dotenv>=1.0.0
 PyYAML>=6.0.0
