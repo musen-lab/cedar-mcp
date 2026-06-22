@@ -2,7 +2,7 @@
 -r requirements.txt
 
 # Code quality and linting
-ruff>=0.5.0
+ruff>=0.15.18
 mypy>=1.10.0
 black>=24.0.0
 
