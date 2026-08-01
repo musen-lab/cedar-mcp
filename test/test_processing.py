@@ -2,17 +2,19 @@
 
 import pytest
 from typing import Dict, Any
-from src.cedar_mcp.processing import (
+from src.cedar_mcp.processing.instance import clean_template_instance_response
+from src.cedar_mcp.processing.template_json import (
     _extract_datatype,
-    _extract_permissible_value_definitions,
     _extract_default_value,
+    _extract_permissible_value_definitions,
+    _transform_field,
+    clean_template_response,
+)
+from src.cedar_mcp.processing.template_yaml import (
     _extract_yaml_datatype,
     _extract_yaml_default_value,
     _extract_yaml_permissible_value_definitions,
-    _transform_field,
     _transform_yaml_field,
-    clean_template_response,
-    clean_template_instance_response,
     clean_template_yaml_response,
 )
 from src.cedar_mcp.model import (
@@ -439,7 +441,7 @@ class TestTransformElement:
         self, sample_nested_template_element: Dict[str, Any]
     ):
         """Test transformation of a simple template element with nested fields."""
-        from src.cedar_mcp.processing import _transform_element
+        from src.cedar_mcp.processing.template_json import _transform_element
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
         result = _transform_element("resource_type", sample_nested_template_element)
@@ -465,7 +467,7 @@ class TestTransformElement:
         self, sample_array_template_element: Dict[str, Any]
     ):
         """Test transformation of an array template element."""
-        from src.cedar_mcp.processing import _transform_element
+        from src.cedar_mcp.processing.template_json import _transform_element
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
         result = _transform_element("data_file_title", sample_array_template_element)
@@ -484,7 +486,7 @@ class TestTransformElement:
 
     def test_process_element_children(self):
         """Test processing of element children with mixed fields and elements."""
-        from src.cedar_mcp.processing import _process_element_children
+        from src.cedar_mcp.processing.template_json import _process_element_children
         from src.cedar_mcp.model import ElementDefinition, FieldDefinition
 
         element_data = {
