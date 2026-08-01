@@ -457,9 +457,11 @@ async def async_get_class_tree(
     )
 
 
-def get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
+def get_template_json(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
     """
-    Fetch a template from the CEDAR repository.
+    Fetch a template from the CEDAR repository in JSON-LD format.
+
+    See get_template_yaml for the cheaper YAML rendering of the same template.
 
     Args:
         template_id: The template ID or full URL from CEDAR repository
@@ -491,9 +493,11 @@ def get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
         return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
 
 
-async def async_get_template(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
+async def async_get_template_json(
+    template_id: str, cedar_api_key: str
+) -> Dict[str, Any]:
     """
-    Async wrapper around get_template.
+    Async wrapper around get_template_json.
 
     Delegates to the sync implementation via asyncio.to_thread so the
     event loop is not blocked during the HTTP call.
@@ -505,7 +509,7 @@ async def async_get_template(template_id: str, cedar_api_key: str) -> Dict[str, 
     Returns:
         Dictionary containing raw CEDAR template data or error information
     """
-    return await asyncio.to_thread(get_template, template_id, cedar_api_key)
+    return await asyncio.to_thread(get_template_json, template_id, cedar_api_key)
 
 
 def get_template_yaml(
@@ -514,8 +518,8 @@ def get_template_yaml(
     """
     Fetch a template from the CEDAR repository in YAML format.
 
-    This is the token-efficient counterpart to get_template, which returns the
-    verbose JSON-LD representation. CEDAR renders the same template as YAML,
+    This is the token-efficient counterpart to get_template_json, which returns
+    the verbose JSON-LD representation. CEDAR renders the same template as YAML,
     and the compact rendering drops bookkeeping keys such as provenance and
     property IRIs, so the result costs far fewer tokens to read.
 

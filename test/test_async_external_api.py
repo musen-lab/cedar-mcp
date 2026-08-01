@@ -16,7 +16,7 @@ from src.cedar_mcp.external_api import (
     async_get_children_from_branch,
     async_get_class_tree,
     async_get_instance,
-    async_get_template,
+    async_get_template_json,
     async_get_template_yaml,
     async_search_instance_ids,
     async_search_terms_from_branch,
@@ -140,17 +140,17 @@ class TestAsyncGetClassTree:
 
 
 @pytest.mark.unit
-class TestAsyncGetTemplate:
-    """Tests for async_get_template."""
+class TestAsyncGetTemplateJson:
+    """Tests for async_get_template_json."""
 
     def test_delegates_to_sync(self) -> None:
-        """Async wrapper should call get_template with the same args."""
+        """Async wrapper should call get_template_json with the same args."""
         expected = {"@id": "tmpl_id", "schema:name": "Test"}
         with patch(
-            "src.cedar_mcp.external_api.get_template",
+            "src.cedar_mcp.external_api.get_template_json",
             return_value=expected,
         ) as mock_sync:
-            result = asyncio.run(async_get_template("tmpl_id", "key123"))
+            result = asyncio.run(async_get_template_json("tmpl_id", "key123"))
         mock_sync.assert_called_once_with("tmpl_id", "key123")
         assert result == expected
 
