@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional, cast
 from urllib.parse import quote
 
 import requests
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -505,6 +506,79 @@ async def async_get_template(template_id: str, cedar_api_key: str) -> Dict[str, 
         Dictionary containing raw CEDAR template data or error information
     """
     return await asyncio.to_thread(get_template, template_id, cedar_api_key)
+
+
+def get_template_yaml(
+    template_id: str, cedar_api_key: str, compact: bool = True
+) -> Dict[str, Any]:
+    """
+    Fetch a template from the CEDAR repository in YAML format.
+
+    This is the token-efficient counterpart to get_template, which returns the
+    verbose JSON-LD representation. CEDAR renders the same template as YAML,
+    and the compact rendering drops bookkeeping keys such as provenance and
+    property IRIs, so the result costs far fewer tokens to read.
+
+    Args:
+        template_id: The template ID or full URL from CEDAR repository
+                    (e.g., "https://repo.metadatacenter.org/templates/...")
+        cedar_api_key: CEDAR API key for authentication
+        compact: Whether to request the compact YAML rendering (default True)
+
+    Returns:
+        Dictionary parsed from the CEDAR YAML response or error information
+    """
+    try:
+        headers = {
+            "Accept": "application/yaml",
+            "Authorization": f"apiKey {cedar_api_key}",
+        }
+
+        # Encode the template ID for URL
+        encoded_template_id = quote(template_id, safe="")
+
+        # Build the URL
+        base_url = (
+            f"https://resource.metadatacenter.org/templates/{encoded_template_id}"
+        )
+
+        params = {"compact": "true" if compact else "false"}
+
+        response = _request_with_retry(base_url, headers=headers, params=params)
+        response.raise_for_status()
+
+        parsed = yaml.safe_load(response.text)
+        if not isinstance(parsed, dict):
+            return {"error": "Unexpected CEDAR YAML response: expected a mapping"}
+
+        return cast(Dict[str, Any], parsed)
+
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to fetch CEDAR template as YAML: {str(e)}"}
+    except yaml.YAMLError as e:
+        return {"error": f"Failed to parse CEDAR template YAML: {str(e)}"}
+
+
+async def async_get_template_yaml(
+    template_id: str, cedar_api_key: str, compact: bool = True
+) -> Dict[str, Any]:
+    """
+    Async wrapper around get_template_yaml.
+
+    Delegates to the sync implementation via asyncio.to_thread so the
+    event loop is not blocked during the HTTP call.
+
+    Args:
+        template_id: The template ID or full URL from CEDAR repository
+        cedar_api_key: CEDAR API key for authentication
+        compact: Whether to request the compact YAML rendering (default True)
+
+    Returns:
+        Dictionary parsed from the CEDAR YAML response or error information
+    """
+    return await asyncio.to_thread(
+        get_template_yaml, template_id, cedar_api_key, compact
+    )
 
 
 def _request_with_retry(

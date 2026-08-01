@@ -2,9 +2,12 @@
 
 import pytest
 from typing import Dict
+from unittest.mock import MagicMock, patch
+
 from src.cedar_mcp.external_api import (
     get_children_from_branch,
     get_class_tree,
+    get_template_yaml,
     search_instance_ids,
     get_instance,
     search_terms_from_branch,
@@ -203,6 +206,113 @@ class TestGetInstance:
         instance_id = "https://repo.metadatacenter.org/template-instances/test-id"
         result = get_instance(instance_id, "invalid-api-key")
         assert "error" in result
+
+
+@pytest.mark.unit
+class TestGetTemplateYaml:
+    """Unit tests for get_template_yaml function."""
+
+    SAMPLE_YAML = """
+type: "template"
+name: "RNAseq"
+description: "A sample template"
+id: "https://repo.metadatacenter.org/templates/944e5fa0-f68b-4bdd-8664-74a3909429a9"
+children:
+  - key: "lab_id"
+    type: "text-field"
+    name: "lab_id"
+    description: "A locally assigned identifier"
+    prefLabel: "Lab ID"
+"""
+
+    def _mock_response(self, text: str) -> MagicMock:
+        response = MagicMock()
+        response.text = text
+        return response
+
+    def test_parses_yaml_response(self):
+        """Test that the YAML body is parsed into a dictionary."""
+        with patch(
+            "src.cedar_mcp.external_api._request_with_retry",
+            return_value=self._mock_response(self.SAMPLE_YAML),
+        ):
+            result = get_template_yaml("template-id", "key123")
+
+        assert result["type"] == "template"
+        assert result["name"] == "RNAseq"
+        assert result["children"][0]["prefLabel"] == "Lab ID"
+
+    def test_requests_yaml_and_compact_by_default(self):
+        """Test that YAML is requested and compact defaults to true."""
+        with patch(
+            "src.cedar_mcp.external_api._request_with_retry",
+            return_value=self._mock_response(self.SAMPLE_YAML),
+        ) as mock_request:
+            get_template_yaml("template-id", "key123")
+
+        _, kwargs = mock_request.call_args
+        assert kwargs["headers"]["Accept"] == "application/yaml"
+        assert kwargs["headers"]["Authorization"] == "apiKey key123"
+        assert kwargs["params"] == {"compact": "true"}
+
+    def test_compact_false_is_forwarded(self):
+        """Test that compact=False asks CEDAR for the full YAML rendering."""
+        with patch(
+            "src.cedar_mcp.external_api._request_with_retry",
+            return_value=self._mock_response(self.SAMPLE_YAML),
+        ) as mock_request:
+            get_template_yaml("template-id", "key123", compact=False)
+
+        _, kwargs = mock_request.call_args
+        assert kwargs["params"] == {"compact": "false"}
+
+    def test_template_id_is_url_encoded(self):
+        """Test that the template URL is encoded into the request path."""
+        with patch(
+            "src.cedar_mcp.external_api._request_with_retry",
+            return_value=self._mock_response(self.SAMPLE_YAML),
+        ) as mock_request:
+            get_template_yaml(
+                "https://repo.metadatacenter.org/templates/944e5fa0", "key123"
+            )
+
+        args, _ = mock_request.call_args
+        assert args[0] == (
+            "https://resource.metadatacenter.org/templates/"
+            "https%3A%2F%2Frepo.metadatacenter.org%2Ftemplates%2F944e5fa0"
+        )
+
+    def test_malformed_yaml_returns_error(self):
+        """Test that unparseable YAML returns an error message."""
+        with patch(
+            "src.cedar_mcp.external_api._request_with_retry",
+            return_value=self._mock_response("name: [unclosed"),
+        ):
+            result = get_template_yaml("template-id", "key123")
+
+        assert "error" in result
+        assert "Failed to parse CEDAR template YAML" in result["error"]
+
+    def test_non_mapping_yaml_returns_error(self):
+        """Test that a YAML body that is not a mapping returns an error."""
+        with patch(
+            "src.cedar_mcp.external_api._request_with_retry",
+            return_value=self._mock_response("- one\n- two\n"),
+        ):
+            result = get_template_yaml("template-id", "key123")
+
+        assert "error" in result
+        assert "expected a mapping" in result["error"]
+
+    def test_invalid_api_key(self):
+        """Test fetching a template as YAML with an invalid API key."""
+        result = get_template_yaml(
+            "https://repo.metadatacenter.org/templates/944e5fa0-f68b-4bdd-8664-74a3909429a9",
+            "invalid-api-key-12345",
+        )
+
+        assert "error" in result
+        assert "Failed to fetch CEDAR template as YAML" in result["error"]
 
 
 @pytest.mark.integration
