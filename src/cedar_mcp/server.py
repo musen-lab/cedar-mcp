@@ -10,12 +10,12 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .cache import BioPortalCache
-from .processing import clean_template_response, clean_template_instance_response
+from .processing import clean_template_yaml_response, clean_template_instance_response
 from .external_api import (
     async_get_children_from_branch,
     async_get_class_tree,
     async_get_instance,
-    async_get_template,
+    async_get_template_yaml,
     async_search_instance_ids,
     async_search_terms_from_branch,
     async_search_terms_from_ontology,
@@ -104,6 +104,10 @@ def main():
         """
         Get a template from the CEDAR repository.
 
+        The template is fetched in CEDAR's compact YAML rendering, which is a
+        far cheaper way to read a template than the JSON-LD form: it leaves out
+        provenance and other bookkeeping keys, so it costs fewer tokens.
+
         Args:
             template_id: The template ID or full URL from CEDAR repository
                         (e.g., "https://repo.metadatacenter.org/templates/e019284e-48d1-4494-bc83-ddefd28dfbac")
@@ -111,12 +115,12 @@ def main():
         Returns:
             Template data from CEDAR, cleaned and transformed
         """
-        template_data = await async_get_template(template_id, CEDAR_API_KEY)
+        template_data = await async_get_template_yaml(template_id, CEDAR_API_KEY)
         if "error" in template_data:
             return template_data
 
         # Always clean the response
-        template_data = clean_template_response(template_data)
+        template_data = clean_template_yaml_response(template_data)
 
         return template_data
 

@@ -171,6 +171,55 @@ class TestGetTemplate:
         except requests.exceptions.RequestException as e:
             pytest.fail(f"Failed to fetch template for structure test: {str(e)}")
 
+    def test_get_cedar_template_yaml_pipeline(
+        self, cedar_api_key: str, sample_cedar_template_id: str
+    ):
+        """Test the fetch-and-clean pipeline the get_cedar_template tool runs."""
+        from src.cedar_mcp.external_api import get_template_yaml
+        from src.cedar_mcp.processing import clean_template_yaml_response
+
+        template_data = get_template_yaml(sample_cedar_template_id, cedar_api_key)
+
+        assert "error" not in template_data
+        assert template_data["type"] == "template"
+        assert "children" in template_data
+
+        cleaned_data = clean_template_yaml_response(template_data)
+
+        assert cleaned_data["type"] == "template"
+        assert "name" in cleaned_data
+        assert isinstance(cleaned_data["children"], list)
+        assert len(cleaned_data["children"]) > 0
+
+    def test_yaml_template_is_smaller_than_json(
+        self, cedar_api_key: str, sample_cedar_template_id: str
+    ):
+        """Test that the compact YAML rendering is cheaper to read than JSON-LD."""
+        from urllib.parse import quote
+
+        encoded_template_id = quote(sample_cedar_template_id, safe="")
+        base_url = (
+            f"https://resource.metadatacenter.org/templates/{encoded_template_id}"
+        )
+        auth = f"apiKey {cedar_api_key}"
+
+        json_response = requests.get(
+            base_url,
+            headers={"Accept": "application/json", "Authorization": auth},
+            timeout=30,
+        )
+        yaml_response = requests.get(
+            base_url,
+            headers={"Accept": "application/yaml", "Authorization": auth},
+            params={"compact": "true"},
+            timeout=30,
+        )
+
+        json_response.raise_for_status()
+        yaml_response.raise_for_status()
+
+        assert len(yaml_response.text) < len(json_response.text)
+
     def test_cedar_api_authentication_header(self, cedar_api_key: str):
         """Test CEDAR API authentication header format."""
         headers = {
