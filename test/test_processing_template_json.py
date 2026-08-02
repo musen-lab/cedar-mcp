@@ -277,8 +277,8 @@ class TestExtractDefaultValue:
             result = _extract_default_value(field_data)
             assert result == expected
 
-    def test_extract_branch_default(self):
-        """Test extraction of branch as default value."""
+    def test_branch_is_not_a_default(self):
+        """Test that a branch constraint does not become a default value."""
         field_data = {
             "_valueConstraints": {
                 "branches": [
@@ -287,11 +287,28 @@ class TestExtractDefaultValue:
             }
         }
 
+        # A branch root names a category to pick from, not a value the field holds
+        assert _extract_default_value(field_data) is None
+
+    def test_declared_default_wins_over_branch(self):
+        """Test that a declared default is still reported alongside a branch."""
+        field_data = {
+            "_valueConstraints": {
+                "branches": [
+                    {"name": "Default Branch", "uri": "http://example.org/branch"}
+                ],
+                "defaultValue": {
+                    "rdfs:label": "Real Default",
+                    "termUri": "http://example.org/real",
+                },
+            }
+        }
+
         result = _extract_default_value(field_data)
 
         assert isinstance(result, ControlledTermDefault)
-        assert result.label == "Default Branch"
-        assert result.iri == "http://example.org/branch"
+        assert result.label == "Real Default"
+        assert result.iri == "http://example.org/real"
 
     def test_no_default_returns_none(self):
         """Test that fields without defaults return None."""

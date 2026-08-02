@@ -165,6 +165,10 @@ def _extract_default_value(
     """
     Extract default value from field data.
 
+    Only reports a default the template actually declares. A branch constraint
+    is not a default: it names the subtree to pick a term from, so its root is
+    a category rather than a value the field can hold.
+
     Args:
         field_data: Field data from input JSON-LD
 
@@ -184,14 +188,6 @@ def _extract_default_value(
     # Check for simple default values
     if default_value is not None and not isinstance(default_value, dict):
         return default_value
-
-    # Check for controlled term default in branches
-    branches = constraints.get("branches", [])
-    if branches:
-        # Use the first branch as default if no other default found
-        for branch in branches:
-            if isinstance(branch, dict) and "name" in branch and "uri" in branch:
-                return ControlledTermDefault(label=branch["name"], iri=branch["uri"])
 
     return None
 

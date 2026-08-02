@@ -258,8 +258,8 @@ class TestExtractYamlDefaultValue:
         }
         assert _extract_yaml_default_value(field_data) == "Yes"
 
-    def test_extract_branch_default(self):
-        """Test that the first branch is used when no default is given."""
+    def test_branch_is_not_a_default(self):
+        """Test that a branch constraint does not become a default value."""
         field_data = {
             "values": [
                 {
@@ -270,10 +270,30 @@ class TestExtractYamlDefaultValue:
                 }
             ]
         }
+
+        # A branch root names a category to pick from, not a value the field holds
+        assert _extract_yaml_default_value(field_data) is None
+
+    def test_declared_default_wins_over_branch(self):
+        """Test that a declared default is still reported alongside a branch."""
+        field_data = {
+            "default": {
+                "value": "https://purl.humanatlas.io/vocab/hravs#HRAVS_0000310",
+                "label": "RNAseq",
+            },
+            "values": [
+                {
+                    "type": "branch",
+                    "acronym": "HRAVS",
+                    "termLabel": "Dataset type",
+                    "iri": "https://purl.humanatlas.io/vocab/hravs#HRAVS_1000361",
+                }
+            ],
+        }
         result = _extract_yaml_default_value(field_data)
 
         assert isinstance(result, ControlledTermDefault)
-        assert result.label == "Analyte class"
+        assert result.label == "RNAseq"
 
     def test_no_default_returns_none(self):
         """Test that a field with no default returns None."""

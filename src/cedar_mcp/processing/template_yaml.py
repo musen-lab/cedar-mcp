@@ -161,6 +161,10 @@ def _extract_yaml_default_value(
     else as a plain scalar. Radio and list fields instead mark the default
     option with `selected: true`.
 
+    Only reports a default the template actually declares. A branch entry in
+    `values` is not a default: it names the subtree to pick a term from, so its
+    root is a category rather than a value the field can hold.
+
     Args:
         field_data: Field data from the CEDAR YAML rendering
 
@@ -189,17 +193,6 @@ def _extract_yaml_default_value(
     for value in values:
         if isinstance(value, dict) and value.get("selected") and "label" in value:
             return value["label"]
-
-    # Check for controlled term default in branches
-    for value in values:
-        if (
-            isinstance(value, dict)
-            and value.get("type") == "branch"
-            and "termLabel" in value
-            and "iri" in value
-        ):
-            # Use the first branch as default if no other default found
-            return ControlledTermDefault(label=value["termLabel"], iri=value["iri"])
 
     return None
 
