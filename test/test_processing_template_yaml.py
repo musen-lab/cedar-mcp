@@ -520,3 +520,152 @@ class TestCleanTemplateYamlResponse:
         assert clean_template_yaml_response(yaml_template) == clean_template_response(
             json_template
         )
+
+
+@pytest.mark.unit
+class TestBranchExpansion:
+    """Tests for expanding branch constraints into their child terms."""
+
+    TEMPLATE = {
+        "type": "template",
+        "name": "RNAseq",
+        "children": [
+            {
+                "key": "analyte_class",
+                "type": "controlled-term-field",
+                "name": "analyte_class",
+                "datatype": "iri",
+                "values": [
+                    {
+                        "type": "branch",
+                        "acronym": "HRAVS",
+                        "termLabel": "Analyte class",
+                        "iri": "https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371",
+                    }
+                ],
+            },
+            {
+                "key": "lab_id",
+                "type": "text-field",
+                "name": "lab_id",
+            },
+        ],
+    }
+
+    def _fetcher(self, calls):
+        def fetch(branch_iri, ontology_acronym):
+            calls.append((branch_iri, ontology_acronym))
+            return ["DNA", "RNA", "Protein"]
+
+        return fetch
+
+    def test_branches_are_not_expanded_by_default(self):
+        """Test that expansion is off unless asked for."""
+        calls = []
+        result = clean_template_yaml_response(
+            self.TEMPLATE, fetch_branch_options=self._fetcher(calls)
+        )
+
+        assert calls == []
+        assert "options" not in result["children"][0]["permissible_values"][0]
+
+    def test_expands_branch_into_options(self):
+        """Test that child labels are listed under the branch constraint."""
+        calls = []
+        result = clean_template_yaml_response(
+            self.TEMPLATE,
+            expand_branches=True,
+            fetch_branch_options=self._fetcher(calls),
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert constraint["type"] == "branch"
+        assert constraint["options"] == ["DNA", "RNA", "Protein"]
+
+        # The branch itself is still identified, and looked up exactly once
+        assert constraint["ontology_acronym"] == "HRAVS"
+        assert calls == [
+            ("https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371", "HRAVS")
+        ]
+
+    def test_expansion_without_fetcher_is_a_no_op(self):
+        """Test that asking for expansion with no fetcher changes nothing."""
+        result = clean_template_yaml_response(self.TEMPLATE, expand_branches=True)
+        assert "options" not in result["children"][0]["permissible_values"][0]
+
+    def test_non_branch_constraints_are_untouched(self):
+        """Test that literal and ontology constraints gain no options."""
+        template = {
+            "type": "template",
+            "name": "T",
+            "children": [
+                {
+                    "key": "f",
+                    "type": "radio-field",
+                    "name": "f",
+                    "values": [{"label": "Yes"}, {"label": "No"}],
+                }
+            ],
+        }
+        result = clean_template_yaml_response(
+            template, expand_branches=True, fetch_branch_options=self._fetcher([])
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert constraint["type"] == "literal"
+        assert "options" in constraint  # literals carry their own options
+        assert constraint["options"] == ["Yes", "No"]
+
+    def test_expands_branches_inside_nested_elements(self):
+        """Test that branches nested in elements are expanded too."""
+        template = {
+            "type": "template",
+            "name": "T",
+            "children": [
+                {
+                    "key": "outer",
+                    "type": "element",
+                    "name": "outer",
+                    "children": [
+                        {
+                            "key": "inner",
+                            "type": "element",
+                            "name": "inner",
+                            "children": [self.TEMPLATE["children"][0]],
+                        }
+                    ],
+                }
+            ],
+        }
+        calls = []
+        result = clean_template_yaml_response(
+            template, expand_branches=True, fetch_branch_options=self._fetcher(calls)
+        )
+
+        deep = result["children"][0]["children"][0]["children"][0]
+        assert deep["permissible_values"][0]["options"] == ["DNA", "RNA", "Protein"]
+        assert len(calls) == 1
+
+    def test_failed_lookup_leaves_branch_unexpanded(self):
+        """Test that a BioPortal failure does not fail the whole template."""
+
+        def failing_fetch(branch_iri, ontology_acronym):
+            raise RuntimeError("BioPortal unavailable")
+
+        result = clean_template_yaml_response(
+            self.TEMPLATE, expand_branches=True, fetch_branch_options=failing_fetch
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert "options" not in constraint
+        assert constraint["branch_iri"].endswith("HRAVS_1000371")
+
+    def test_empty_children_leaves_branch_unexpanded(self):
+        """Test that a branch with no children gets no empty options list."""
+        result = clean_template_yaml_response(
+            self.TEMPLATE,
+            expand_branches=True,
+            fetch_branch_options=lambda iri, acronym: [],
+        )
+
+        assert "options" not in result["children"][0]["permissible_values"][0]

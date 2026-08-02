@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
+import asyncio
 import os
 import sys
 import warnings
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
@@ -19,6 +20,7 @@ from .external_api import (
     async_search_instance_ids,
     async_search_terms_from_branch,
     async_search_terms_from_ontology,
+    get_children_from_branch,
 )
 
 
@@ -98,9 +100,53 @@ def main():
     # Initialize BioPortal cache
     cache = BioPortalCache()
 
+    def fetch_branch_options(branch_iri: str, ontology_acronym: str) -> List[str]:
+        """
+        Look up the labels of the terms directly under an ontology branch.
+
+        Results go through the BioPortal cache, since a single template can
+        carry dozens of branch constraints.
+
+        Args:
+            branch_iri: IRI of the branch root
+            ontology_acronym: Ontology acronym the branch belongs to
+
+        Returns:
+            List of child term labels
+
+        Raises:
+            RuntimeError: If BioPortal could not be reached
+        """
+        result = cache.get(
+            "get_children_from_branch",
+            branch_iri=branch_iri,
+            ontology_acronym=ontology_acronym,
+        )
+
+        if result is None:
+            result = get_children_from_branch(
+                branch_iri, ontology_acronym, BIOPORTAL_API_KEY
+            )
+            if "error" in result:
+                raise RuntimeError(result["error"])
+            cache.set(
+                "get_children_from_branch",
+                result,
+                branch_iri=branch_iri,
+                ontology_acronym=ontology_acronym,
+            )
+
+        return [
+            child["prefLabel"]
+            for child in result.get("collection", [])
+            if isinstance(child, dict) and "prefLabel" in child
+        ]
+
     # Register MCP tools
     @mcp.tool()
-    async def get_cedar_template(template_id: str) -> Dict[str, Any]:
+    async def get_cedar_template(
+        template_id: str, expand_branches: bool = False
+    ) -> Dict[str, Any]:
         """
         Get a template from the CEDAR repository.
 
@@ -111,6 +157,11 @@ def main():
         Args:
             template_id: The template ID or full URL from CEDAR repository
                         (e.g., "https://repo.metadatacenter.org/templates/e019284e-48d1-4494-bc83-ddefd28dfbac")
+            expand_branches: List the allowed terms for each ontology branch
+                            constraint under permissible_values. This costs one
+                            BioPortal lookup per branch and makes the response
+                            considerably larger, so leave it off unless the
+                            allowed values are needed (default: False)
 
         Returns:
             Template data from CEDAR, cleaned and transformed
@@ -119,10 +170,17 @@ def main():
         if "error" in template_data:
             return template_data
 
-        # Always clean the response
-        template_data = clean_template_yaml_response(template_data)
+        if expand_branches:
+            # Branch lookups are blocking, so keep them off the event loop
+            return await asyncio.to_thread(
+                clean_template_yaml_response,
+                template_data,
+                True,
+                fetch_branch_options,
+            )
 
-        return template_data
+        # Always clean the response
+        return clean_template_yaml_response(template_data)
 
     @mcp.tool()
     async def get_instances_based_on_template(

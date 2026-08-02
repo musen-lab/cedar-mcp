@@ -16,6 +16,7 @@ from ..model import (
     SimplifiedTemplate,
     ValueConstraint,
 )
+from .branch_expansion import BranchOptionFetcher, expand_branch_constraints
 
 # CEDAR YAML field types that carry layout or decoration rather than data.
 # The JSON-LD cleaner skips these too, since they are StaticTemplateFields.
@@ -275,6 +276,8 @@ def _process_yaml_children(
 
 def clean_template_yaml_response(
     template_data: Dict[str, Any],
+    expand_branches: bool = False,
+    fetch_branch_options: Optional[BranchOptionFetcher] = None,
 ) -> Dict[str, Any]:
     """
     Clean and transform a CEDAR template YAML rendering to simplified structure.
@@ -286,16 +289,24 @@ def clean_template_yaml_response(
 
     Args:
         template_data: Template data parsed from the CEDAR YAML rendering
+        expand_branches: Whether to list the child terms of each branch
+                        constraint, which costs one lookup per branch
+        fetch_branch_options: Callable returning the child labels for a branch,
+                             required for expansion to happen
 
     Returns:
         Cleaned and transformed template data as dictionary
     """
     template_name = template_data.get("name", "") or "Unnamed Template"
+    children = _process_yaml_children(template_data)
+
+    if expand_branches and fetch_branch_options is not None:
+        expand_branch_constraints(children, fetch_branch_options)
 
     output_template = SimplifiedTemplate(
         type="template",
         name=template_name,
-        children=_process_yaml_children(template_data),
+        children=children,
     )
 
     # Convert to dictionary for YAML export

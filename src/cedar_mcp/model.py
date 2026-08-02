@@ -50,6 +50,11 @@ class BranchConstraint(BaseModel):
     type: Literal["branch"] = "branch"
     ontology_acronym: str = Field(..., description="Ontology acronym")
     branch_iri: str = Field(..., description="IRI of the branch root")
+    options: Optional[List[str]] = Field(
+        None,
+        description="Labels of the terms under the branch root, "
+        "present only when branch expansion is enabled",
+    )
 
 
 ValueConstraint = Union[
