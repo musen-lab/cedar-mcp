@@ -250,13 +250,15 @@ class TestExtractYamlDefaultValue:
         """Test extraction of a numeric default."""
         assert _extract_yaml_default_value({"default": 42}) == 42
 
-    def test_extract_selected_literal_default(self):
-        """Test that a literal marked selected becomes the default."""
+    def test_selected_literal_is_not_a_default(self):
+        """Test that an option marked selected does not become the default."""
         field_data = {
             "type": "radio-field",
             "values": [{"label": "Yes", "selected": True}, {"label": "No"}],
         }
-        assert _extract_yaml_default_value(field_data) == "Yes"
+
+        # `selected` is a UI preselection, not a declared default
+        assert _extract_yaml_default_value(field_data) is None
 
     def test_branch_is_not_a_default(self):
         """Test that a branch constraint does not become a default value."""

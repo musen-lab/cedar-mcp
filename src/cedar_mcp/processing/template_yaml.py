@@ -157,13 +157,13 @@ def _extract_yaml_default_value(
     """
     Extract the default value from a CEDAR YAML field.
 
-    Controlled term defaults are rendered as a `value`/`label` pair, everything
-    else as a plain scalar. Radio and list fields instead mark the default
-    option with `selected: true`.
+    Only the `default` key counts. Controlled term defaults are rendered there
+    as a `value`/`label` pair, everything else as a plain scalar.
 
-    Only reports a default the template actually declares. A branch entry in
-    `values` is not a default: it names the subtree to pick a term from, so its
-    root is a category rather than a value the field can hold.
+    Two things in `values` are deliberately not treated as defaults:
+    an option marked `selected: true`, which is a UI preselection rather than
+    a declared default, and a branch entry, which names the subtree to pick a
+    term from and so is a category rather than a value the field can hold.
 
     Args:
         field_data: Field data from the CEDAR YAML rendering
@@ -184,15 +184,6 @@ def _extract_yaml_default_value(
     # Check for simple default values
     if default_value is not None:
         return default_value
-
-    values = field_data.get("values", [])
-    if not isinstance(values, list):
-        return None
-
-    # Check for a literal option marked as selected by default
-    for value in values:
-        if isinstance(value, dict) and value.get("selected") and "label" in value:
-            return value["label"]
 
     return None
 
