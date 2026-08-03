@@ -582,8 +582,11 @@ class TestBranchExpansion:
         assert constraint["type"] == "branch"
         assert constraint["options"] == ["DNA", "RNA", "Protein"]
 
-        # The branch itself is still identified, and looked up exactly once
-        assert constraint["ontology_acronym"] == "HRAVS"
+        # The root is dropped once its contents are listed
+        assert "ontology_acronym" not in constraint
+        assert "branch_iri" not in constraint
+
+        # Looked up exactly once
         assert calls == [
             ("https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371", "HRAVS")
         ]
@@ -658,6 +661,9 @@ class TestBranchExpansion:
 
         constraint = result["children"][0]["permissible_values"][0]
         assert "options" not in constraint
+
+        # The lookup failed, so the root must stay resolvable
+        assert constraint["ontology_acronym"] == "HRAVS"
         assert constraint["branch_iri"].endswith("HRAVS_1000371")
 
     def test_empty_children_leaves_branch_unexpanded(self):
@@ -668,4 +674,9 @@ class TestBranchExpansion:
             fetch_branch_options=lambda iri, acronym: [],
         )
 
-        assert "options" not in result["children"][0]["permissible_values"][0]
+        constraint = result["children"][0]["permissible_values"][0]
+        assert "options" not in constraint
+
+        # Nothing was listed, so the root must stay resolvable
+        assert constraint["ontology_acronym"] == "HRAVS"
+        assert constraint["branch_iri"].endswith("HRAVS_1000371")

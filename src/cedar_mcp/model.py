@@ -48,8 +48,14 @@ class BranchConstraint(BaseModel):
     """
 
     type: Literal["branch"] = "branch"
-    ontology_acronym: str = Field(..., description="Ontology acronym")
-    branch_iri: str = Field(..., description="IRI of the branch root")
+    ontology_acronym: Optional[str] = Field(
+        None,
+        description="Ontology acronym, dropped once the branch has been expanded",
+    )
+    branch_iri: Optional[str] = Field(
+        None,
+        description="IRI of the branch root, dropped once the branch has been expanded",
+    )
     options: Optional[List[str]] = Field(
         None,
         description="Labels of the terms under the branch root, "

@@ -26,9 +26,12 @@ def expand_branch_constraints(
     the terms directly under that root so a consumer can pick one without
     querying BioPortal.
 
+    Once expanded, the branch root is no longer worth reporting, so
+    `ontology_acronym` and `branch_iri` are dropped in favour of the options.
+
     Each branch costs one lookup, so this is only worth doing on request. A
-    branch whose lookup fails, or that has no children, is left unexpanded
-    rather than failing the whole template.
+    branch whose lookup fails, or that has no children, keeps its root so it
+    stays resolvable, rather than failing the whole template.
 
     Args:
         children: Field and element definitions to walk, modified in place
@@ -41,6 +44,10 @@ def expand_branch_constraints(
 
         for constraint in child.permissible_values or []:
             if not isinstance(constraint, BranchConstraint):
+                continue
+
+            # No root to look up: already expanded, so leave it alone
+            if constraint.branch_iri is None or constraint.ontology_acronym is None:
                 continue
 
             try:
@@ -58,3 +65,6 @@ def expand_branch_constraints(
 
             if options:
                 constraint.options = options
+                # The root only existed so the subtree could be looked up
+                constraint.ontology_acronym = None
+                constraint.branch_iri = None
