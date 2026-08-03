@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
-"""Cleaning and transformation of CEDAR templates in YAML format."""
+"""Cleaning and transformation of CEDAR templates.
+
+Templates arrive as CEDAR's YAML rendering, parsed into a dictionary.
+"""
 
 from typing import Any, Dict, List, Optional, Union
 
@@ -20,7 +23,7 @@ from .branch_expansion import normalize_expanded_branches
 
 # CEDAR YAML field types that carry layout or decoration rather than data.
 # The JSON-LD cleaner skips these too, since they are StaticTemplateFields.
-_YAML_STATIC_FIELD_TYPES = {
+_STATIC_FIELD_TYPES = {
     "static-page-break",
     "static-section-break",
     "static-image",
@@ -28,7 +31,7 @@ _YAML_STATIC_FIELD_TYPES = {
     "static-youtube-video",
 }
 
-_YAML_INTEGER_DATATYPES = {
+_INTEGER_DATATYPES = {
     "xsd:int",
     "xsd:integer",
     "xsd:long",
@@ -37,7 +40,7 @@ _YAML_INTEGER_DATATYPES = {
 }
 
 
-def _extract_yaml_datatype(field_data: Dict[str, Any]) -> str:
+def _extract_datatype(field_data: Dict[str, Any]) -> str:
     """
     Determine the appropriate datatype for a field in CEDAR YAML.
 
@@ -56,7 +59,7 @@ def _extract_yaml_datatype(field_data: Dict[str, Any]) -> str:
 
     # Numeric fields carry their XSD type in `datatype`
     if field_type == "numeric-field":
-        if datatype in _YAML_INTEGER_DATATYPES:
+        if datatype in _INTEGER_DATATYPES:
             return "integer"
         return "decimal"
 
@@ -80,7 +83,7 @@ def _extract_yaml_datatype(field_data: Dict[str, Any]) -> str:
     return "string"
 
 
-def _extract_yaml_permissible_value_definitions(
+def _extract_permissible_value_definitions(
     field_data: Dict[str, Any],
 ) -> Optional[List[ValueConstraint]]:
     """
@@ -154,7 +157,7 @@ def _extract_yaml_permissible_value_definitions(
     return result if result else None
 
 
-def _extract_yaml_default_value(
+def _extract_default_value(
     field_data: Dict[str, Any],
 ) -> Optional[Union[ControlledTermDefault, str, int, float, bool]]:
     """
@@ -191,7 +194,7 @@ def _extract_yaml_default_value(
     return None
 
 
-def _transform_yaml_field(field_data: Dict[str, Any]) -> FieldDefinition:
+def _transform_field(field_data: Dict[str, Any]) -> FieldDefinition:
     """
     Transform a single field from CEDAR YAML to output structure.
 
@@ -210,16 +213,16 @@ def _transform_yaml_field(field_data: Dict[str, Any]) -> FieldDefinition:
         name=name,
         description=description,
         label=label,
-        type=_extract_yaml_datatype(field_data),
+        type=_extract_datatype(field_data),
         required=configuration.get("required", False),
         multivalued=configuration.get("multiple", False),
         pattern=field_data.get("regex"),
-        default_value=_extract_yaml_default_value(field_data),
-        permissible_values=_extract_yaml_permissible_value_definitions(field_data),
+        default_value=_extract_default_value(field_data),
+        permissible_values=_extract_permissible_value_definitions(field_data),
     )
 
 
-def _transform_yaml_element(element_data: Dict[str, Any]) -> ElementDefinition:
+def _transform_element(element_data: Dict[str, Any]) -> ElementDefinition:
     """
     Transform a single template element from CEDAR YAML to output structure.
 
@@ -241,11 +244,11 @@ def _transform_yaml_element(element_data: Dict[str, Any]) -> ElementDefinition:
         type="element",
         required=configuration.get("required", False),
         multivalued=configuration.get("multiple", False),
-        children=_process_yaml_children(element_data),
+        children=_process_children(element_data),
     )
 
 
-def _process_yaml_children(
+def _process_children(
     parent_data: Dict[str, Any],
 ) -> List[Union[FieldDefinition, ElementDefinition]]:
     """
@@ -269,14 +272,14 @@ def _process_yaml_children(
         child_type = child_data.get("type", "")
 
         if child_type == "element":
-            children.append(_transform_yaml_element(child_data))
-        elif child_type and child_type not in _YAML_STATIC_FIELD_TYPES:
-            children.append(_transform_yaml_field(child_data))
+            children.append(_transform_element(child_data))
+        elif child_type and child_type not in _STATIC_FIELD_TYPES:
+            children.append(_transform_field(child_data))
 
     return children
 
 
-def clean_template_yaml_response(
+def clean_template_response(
     template_data: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
@@ -300,7 +303,7 @@ def clean_template_yaml_response(
     output_template = SimplifiedTemplate(
         type="template",
         name=template_name,
-        children=_process_yaml_children(template_data),
+        children=_process_children(template_data),
     )
 
     # Convert to dictionary for YAML export

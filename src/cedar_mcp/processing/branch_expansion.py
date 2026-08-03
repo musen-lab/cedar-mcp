@@ -21,7 +21,7 @@ BranchExpansion = Literal["none", "labels", "terms"]
 BranchOptionFetcher = Callable[[str, str], List[ClassOption]]
 
 # Where branch constraints live. A CEDAR template keeps them under `values`; a
-# template that has been through clean_template_yaml_response keeps them under
+# template that has been through clean_template_response keeps them under
 # `permissible_values`. Accepting both is what lets cleaning and expansion run
 # in either order.
 _CONSTRAINT_KEYS = ("values", "permissible_values")
@@ -46,7 +46,7 @@ def expand_template_branches(
     querying BioPortal.
 
     Accepts a template as CEDAR returned it or one already cleaned by
-    clean_template_yaml_response, and returns the same kind it was given. The
+    clean_template_response, and returns the same kind it was given. The
     two transforms are therefore order independent: expanding a cleaned template
     and cleaning an expanded one produce the same result.
 

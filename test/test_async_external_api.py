@@ -16,7 +16,7 @@ from src.cedar_mcp.external_api import (
     async_get_children_from_branch,
     async_get_class_tree,
     async_get_instance,
-    async_get_template_yaml,
+    async_get_template,
     async_search_instance_ids,
     async_search_terms_from_branch,
     async_search_terms_from_ontology,
@@ -139,17 +139,17 @@ class TestAsyncGetClassTree:
 
 
 @pytest.mark.unit
-class TestAsyncGetTemplateYaml:
-    """Tests for async_get_template_yaml."""
+class TestAsyncGetTemplate:
+    """Tests for async_get_template."""
 
     def test_delegates_to_sync_with_default_compact(self) -> None:
-        """Async wrapper should call get_template_yaml with compact enabled."""
+        """Async wrapper should call get_template with compact enabled."""
         expected = {"type": "template", "name": "Test"}
         with patch(
-            "src.cedar_mcp.external_api.get_template_yaml",
+            "src.cedar_mcp.external_api.get_template",
             return_value=expected,
         ) as mock_sync:
-            result = asyncio.run(async_get_template_yaml("tmpl_id", "key123"))
+            result = asyncio.run(async_get_template("tmpl_id", "key123"))
         mock_sync.assert_called_once_with("tmpl_id", "key123", True)
         assert result == expected
 
@@ -157,11 +157,9 @@ class TestAsyncGetTemplateYaml:
         """Async wrapper should forward compact=False."""
         expected = {"type": "template", "name": "Test"}
         with patch(
-            "src.cedar_mcp.external_api.get_template_yaml",
+            "src.cedar_mcp.external_api.get_template",
             return_value=expected,
         ) as mock_sync:
-            result = asyncio.run(
-                async_get_template_yaml("tmpl_id", "key123", compact=False)
-            )
+            result = asyncio.run(async_get_template("tmpl_id", "key123", compact=False))
         mock_sync.assert_called_once_with("tmpl_id", "key123", False)
         assert result == expected

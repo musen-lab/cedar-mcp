@@ -14,14 +14,14 @@ from .cache import BioPortalCache
 from .model import ClassOption
 from .processing import (
     clean_template_instance_response,
-    clean_template_yaml_response,
+    clean_template_response,
     expand_template_branches,
 )
 from .external_api import (
     async_get_children_from_branch,
     async_get_class_tree,
     async_get_instance,
-    async_get_template_yaml,
+    async_get_template,
     async_search_instance_ids,
     async_search_terms_from_branch,
     async_search_terms_from_ontology,
@@ -186,12 +186,12 @@ def main():
         Returns:
             Template data from CEDAR, cleaned and transformed
         """
-        template_data = await async_get_template_yaml(template_id, CEDAR_API_KEY)
+        template_data = await async_get_template(template_id, CEDAR_API_KEY)
         if "error" in template_data:
             return template_data
 
         # Always clean the response
-        cleaned = clean_template_yaml_response(template_data)
+        cleaned = clean_template_response(template_data)
 
         if expand_branches == "none":
             return cleaned

@@ -5,12 +5,12 @@ import copy
 import pytest
 
 from src.cedar_mcp.processing.branch_expansion import expand_template_branches
-from src.cedar_mcp.processing.template_yaml import (
-    _extract_yaml_datatype,
-    _extract_yaml_default_value,
-    _extract_yaml_permissible_value_definitions,
-    _transform_yaml_field,
-    clean_template_yaml_response,
+from src.cedar_mcp.processing.template import (
+    _extract_datatype,
+    _extract_default_value,
+    _extract_permissible_value_definitions,
+    _transform_field,
+    clean_template_response,
 )
 from src.cedar_mcp.model import (
     BranchConstraint,
@@ -24,79 +24,79 @@ from src.cedar_mcp.model import (
 
 
 @pytest.mark.unit
-class TestExtractYamlDatatype:
-    """Tests for _extract_yaml_datatype function."""
+class TestExtractDatatype:
+    """Tests for _extract_datatype function."""
 
     def test_string_datatype_default(self):
         """Test that string is returned as default datatype."""
-        result = _extract_yaml_datatype({"type": "text-field"})
+        result = _extract_datatype({"type": "text-field"})
         assert result == "string"
 
     def test_string_for_textarea(self):
         """Test that text area fields return string."""
-        result = _extract_yaml_datatype({"type": "text-area-field"})
+        result = _extract_datatype({"type": "text-area-field"})
         assert result == "string"
 
     def test_integer_datatype_xsd_int(self):
         """Test integer datatype detection from xsd:int."""
         field_data = {"type": "numeric-field", "datatype": "xsd:int"}
-        assert _extract_yaml_datatype(field_data) == "integer"
+        assert _extract_datatype(field_data) == "integer"
 
     def test_integer_datatype_xsd_long(self):
         """Test integer datatype detection from xsd:long."""
         field_data = {"type": "numeric-field", "datatype": "xsd:long"}
-        assert _extract_yaml_datatype(field_data) == "integer"
+        assert _extract_datatype(field_data) == "integer"
 
     def test_decimal_datatype(self):
         """Test decimal datatype detection from xsd:decimal."""
         field_data = {"type": "numeric-field", "datatype": "xsd:decimal"}
-        assert _extract_yaml_datatype(field_data) == "decimal"
+        assert _extract_datatype(field_data) == "decimal"
 
     def test_decimal_datatype_default_numeric(self):
         """Test decimal is default for numeric without a datatype."""
-        assert _extract_yaml_datatype({"type": "numeric-field"}) == "decimal"
+        assert _extract_datatype({"type": "numeric-field"}) == "decimal"
 
     def test_date_datatype(self):
         """Test date datatype detection from xsd:date."""
         field_data = {"type": "temporal-field", "datatype": "xsd:date"}
-        assert _extract_yaml_datatype(field_data) == "date"
+        assert _extract_datatype(field_data) == "date"
 
     def test_time_datatype(self):
         """Test time datatype detection from xsd:time."""
         field_data = {"type": "temporal-field", "datatype": "xsd:time"}
-        assert _extract_yaml_datatype(field_data) == "time"
+        assert _extract_datatype(field_data) == "time"
 
     def test_datetime_datatype(self):
         """Test datetime is default for temporal fields."""
         field_data = {"type": "temporal-field", "datatype": "xsd:dateTime"}
-        assert _extract_yaml_datatype(field_data) == "datetime"
+        assert _extract_datatype(field_data) == "datetime"
 
     def test_link_datatype(self):
         """Test link datatype detection from link fields."""
-        assert _extract_yaml_datatype({"type": "link-field"}) == "link"
+        assert _extract_datatype({"type": "link-field"}) == "link"
 
     def test_boolean_datatype_for_bare_checkbox(self):
         """Test that a checkbox without values is treated as boolean."""
-        assert _extract_yaml_datatype({"type": "checkbox-field"}) == "boolean"
+        assert _extract_datatype({"type": "checkbox-field"}) == "boolean"
 
     def test_checkbox_with_values_is_string(self):
         """Test that a checkbox with controlled values is not boolean."""
         field_data = {"type": "checkbox-field", "values": [{"label": "Yes"}]}
-        assert _extract_yaml_datatype(field_data) == "string"
+        assert _extract_datatype(field_data) == "string"
 
     def test_controlled_term_returns_string(self):
         """Test that controlled term fields return string, not iri."""
         field_data = {"type": "controlled-term-field", "datatype": "iri"}
-        assert _extract_yaml_datatype(field_data) == "string"
+        assert _extract_datatype(field_data) == "string"
 
     def test_empty_field_data(self):
         """Test that empty field data returns string."""
-        assert _extract_yaml_datatype({}) == "string"
+        assert _extract_datatype({}) == "string"
 
 
 @pytest.mark.unit
-class TestExtractYamlPermissibleValueDefinitions:
-    """Tests for _extract_yaml_permissible_value_definitions function."""
+class TestExtractPermissibleValueDefinitions:
+    """Tests for _extract_permissible_value_definitions function."""
 
     def test_extract_literal_values(self):
         """Test extraction of untyped literal options."""
@@ -104,7 +104,7 @@ class TestExtractYamlPermissibleValueDefinitions:
             "type": "radio-field",
             "values": [{"label": "Yes", "selected": True}, {"label": "No"}],
         }
-        result = _extract_yaml_permissible_value_definitions(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert len(result) == 1
@@ -123,7 +123,7 @@ class TestExtractYamlPermissibleValueDefinitions:
                 }
             ]
         }
-        result = _extract_yaml_permissible_value_definitions(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert isinstance(result[0], OntologyConstraint)
@@ -141,7 +141,7 @@ class TestExtractYamlPermissibleValueDefinitions:
                 }
             ]
         }
-        result = _extract_yaml_permissible_value_definitions(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert isinstance(result[0], OntologyConstraint)
@@ -161,7 +161,7 @@ class TestExtractYamlPermissibleValueDefinitions:
                 }
             ]
         }
-        result = _extract_yaml_permissible_value_definitions(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert isinstance(result[0], ClassConstraint)
@@ -184,7 +184,7 @@ class TestExtractYamlPermissibleValueDefinitions:
                 }
             ]
         }
-        result = _extract_yaml_permissible_value_definitions(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert isinstance(result[0], BranchConstraint)
@@ -196,9 +196,7 @@ class TestExtractYamlPermissibleValueDefinitions:
 
     def test_no_values_returns_none(self):
         """Test that a field without values returns None."""
-        assert (
-            _extract_yaml_permissible_value_definitions({"type": "text-field"}) is None
-        )
+        assert _extract_permissible_value_definitions({"type": "text-field"}) is None
 
     def test_extract_mixed_constraints(self):
         """Test extraction when several constraint kinds are present."""
@@ -214,7 +212,7 @@ class TestExtractYamlPermissibleValueDefinitions:
                 },
             ]
         }
-        result = _extract_yaml_permissible_value_definitions(field_data)
+        result = _extract_permissible_value_definitions(field_data)
 
         assert result is not None
         assert len(result) == 3
@@ -224,8 +222,8 @@ class TestExtractYamlPermissibleValueDefinitions:
 
 
 @pytest.mark.unit
-class TestExtractYamlDefaultValue:
-    """Tests for _extract_yaml_default_value function."""
+class TestExtractDefaultValue:
+    """Tests for _extract_default_value function."""
 
     def test_extract_controlled_term_default(self):
         """Test extraction of a value/label default pair."""
@@ -235,7 +233,7 @@ class TestExtractYamlDefaultValue:
                 "label": "RNAseq",
             }
         }
-        result = _extract_yaml_default_value(field_data)
+        result = _extract_default_value(field_data)
 
         assert isinstance(result, ControlledTermDefault)
         assert result.label == "RNAseq"
@@ -245,13 +243,12 @@ class TestExtractYamlDefaultValue:
         """Test extraction of a plain scalar default."""
         field_data = {"default": "944e5fa0-f68b-4bdd-8664-74a3909429a9"}
         assert (
-            _extract_yaml_default_value(field_data)
-            == "944e5fa0-f68b-4bdd-8664-74a3909429a9"
+            _extract_default_value(field_data) == "944e5fa0-f68b-4bdd-8664-74a3909429a9"
         )
 
     def test_extract_numeric_default(self):
         """Test extraction of a numeric default."""
-        assert _extract_yaml_default_value({"default": 42}) == 42
+        assert _extract_default_value({"default": 42}) == 42
 
     def test_selected_literal_is_not_a_default(self):
         """Test that an option marked selected does not become the default."""
@@ -261,7 +258,7 @@ class TestExtractYamlDefaultValue:
         }
 
         # `selected` is a UI preselection, not a declared default
-        assert _extract_yaml_default_value(field_data) is None
+        assert _extract_default_value(field_data) is None
 
     def test_branch_is_not_a_default(self):
         """Test that a branch constraint does not become a default value."""
@@ -277,7 +274,7 @@ class TestExtractYamlDefaultValue:
         }
 
         # A branch root names a category to pick from, not a value the field holds
-        assert _extract_yaml_default_value(field_data) is None
+        assert _extract_default_value(field_data) is None
 
     def test_declared_default_wins_over_branch(self):
         """Test that a declared default is still reported alongside a branch."""
@@ -295,19 +292,19 @@ class TestExtractYamlDefaultValue:
                 }
             ],
         }
-        result = _extract_yaml_default_value(field_data)
+        result = _extract_default_value(field_data)
 
         assert isinstance(result, ControlledTermDefault)
         assert result.label == "RNAseq"
 
     def test_no_default_returns_none(self):
         """Test that a field with no default returns None."""
-        assert _extract_yaml_default_value({"type": "text-field"}) is None
+        assert _extract_default_value({"type": "text-field"}) is None
 
 
 @pytest.mark.unit
-class TestTransformYamlField:
-    """Tests for _transform_yaml_field function."""
+class TestTransformField:
+    """Tests for _transform_field function."""
 
     def test_transform_simple_field(self):
         """Test transforming a plain text field."""
@@ -318,7 +315,7 @@ class TestTransformYamlField:
             "description": "A locally assigned identifier",
             "prefLabel": "Lab ID",
         }
-        result = _transform_yaml_field(field_data)
+        result = _transform_field(field_data)
 
         assert isinstance(result, FieldDefinition)
         assert result.name == "lab_id"
@@ -337,7 +334,7 @@ class TestTransformYamlField:
             "regex": "^HBM\\d{3}$",
             "configuration": {"required": True},
         }
-        result = _transform_yaml_field(field_data)
+        result = _transform_field(field_data)
 
         assert result.pattern == "^HBM\\d{3}$"
         assert result.required is True
@@ -349,22 +346,22 @@ class TestTransformYamlField:
             "name": "Notes",
             "configuration": {"multiple": True, "minItems": 1},
         }
-        assert _transform_yaml_field(field_data).multivalued is True
+        assert _transform_field(field_data).multivalued is True
 
     def test_label_falls_back_to_name(self):
         """Test that a field without prefLabel uses its name as the label."""
         field_data = {"type": "text-field", "name": "lab_id"}
-        assert _transform_yaml_field(field_data).label == "lab_id"
+        assert _transform_field(field_data).label == "lab_id"
 
     def test_name_falls_back_to_key(self):
         """Test that a field without a name uses its key."""
         field_data = {"type": "text-field", "key": "lab_id"}
-        assert _transform_yaml_field(field_data).name == "lab_id"
+        assert _transform_field(field_data).name == "lab_id"
 
 
 @pytest.mark.unit
-class TestCleanTemplateYamlResponse:
-    """Tests for clean_template_yaml_response function."""
+class TestCleanTemplateResponse:
+    """Tests for clean_template_response function."""
 
     def test_clean_minimal_template(self):
         """Test cleaning a template with a single field."""
@@ -383,7 +380,7 @@ class TestCleanTemplateYamlResponse:
                 }
             ],
         }
-        result = clean_template_yaml_response(template_data)
+        result = clean_template_response(template_data)
 
         assert result["type"] == "template"
         assert result["name"] == "RNAseq"
@@ -392,12 +389,12 @@ class TestCleanTemplateYamlResponse:
 
     def test_clean_template_empty_name(self):
         """Test that a template with no name gets a placeholder."""
-        result = clean_template_yaml_response({"type": "template", "children": []})
+        result = clean_template_response({"type": "template", "children": []})
         assert result["name"] == "Unnamed Template"
 
     def test_clean_template_without_children(self):
         """Test that a template with no children key still cleans."""
-        result = clean_template_yaml_response({"type": "template", "name": "Empty"})
+        result = clean_template_response({"type": "template", "name": "Empty"})
         assert result["children"] == []
 
     def test_static_fields_are_skipped(self):
@@ -415,7 +412,7 @@ class TestCleanTemplateYamlResponse:
                 {"key": "lab_id", "type": "text-field", "name": "lab_id"},
             ],
         }
-        result = clean_template_yaml_response(template_data)
+        result = clean_template_response(template_data)
 
         assert len(result["children"]) == 1
         assert result["children"][0]["name"] == "lab_id"
@@ -458,7 +455,7 @@ class TestCleanTemplateYamlResponse:
                 }
             ],
         }
-        result = clean_template_yaml_response(template_data)
+        result = clean_template_response(template_data)
 
         element = result["children"][0]
         assert element["type"] == "element"
@@ -484,7 +481,7 @@ class TestCleanTemplateYamlResponse:
                 {"key": "lab_id", "type": "text-field", "name": "lab_id"},
             ],
         }
-        result = clean_template_yaml_response(template_data)
+        result = clean_template_response(template_data)
 
         assert len(result["children"]) == 1
         assert result["children"][0]["name"] == "lab_id"
@@ -610,7 +607,7 @@ class TestExpandTemplateBranches:
 
     def test_expands_cleaned_template_and_drops_root(self):
         """Test that a cleaned template expands and loses the branch root."""
-        cleaned = clean_template_yaml_response(RAW_TEMPLATE)
+        cleaned = clean_template_response(RAW_TEMPLATE)
         result = expand_template_branches(cleaned, "labels", _fetcher())
 
         for branch in _branches(result):
@@ -620,7 +617,7 @@ class TestExpandTemplateBranches:
 
     def test_terms_mode_lists_labels_with_iris(self):
         """Test that "terms" lists each child label with its IRI."""
-        cleaned = clean_template_yaml_response(RAW_TEMPLATE)
+        cleaned = clean_template_response(RAW_TEMPLATE)
         result = expand_template_branches(cleaned, "terms", _fetcher())
 
         assert _branches(result)[0]["options"] == [
@@ -630,7 +627,7 @@ class TestExpandTemplateBranches:
 
     def test_non_branch_constraints_are_untouched(self):
         """Test that a literal constraint gains nothing from expansion."""
-        cleaned = clean_template_yaml_response(RAW_TEMPLATE)
+        cleaned = clean_template_response(RAW_TEMPLATE)
         result = expand_template_branches(cleaned, "labels", _fetcher())
 
         literal = result["children"][1]["permissible_values"][0]
@@ -652,7 +649,7 @@ class TestExpandTemplateBranches:
         def failing(branch_iri, ontology_acronym):
             raise RuntimeError("BioPortal unavailable")
 
-        cleaned = clean_template_yaml_response(RAW_TEMPLATE)
+        cleaned = clean_template_response(RAW_TEMPLATE)
         result = expand_template_branches(cleaned, "labels", failing)
 
         for branch in _branches(result):
@@ -661,7 +658,7 @@ class TestExpandTemplateBranches:
 
     def test_empty_children_keeps_the_root(self):
         """Test that a branch with no child terms is left alone."""
-        cleaned = clean_template_yaml_response(RAW_TEMPLATE)
+        cleaned = clean_template_response(RAW_TEMPLATE)
         result = expand_template_branches(cleaned, "labels", lambda i, a: [])
 
         for branch in _branches(result):
@@ -678,9 +675,9 @@ class TestPipelineOrderIndependence:
     def test_labels_mode_is_order_independent(self):
         """Test clean-then-expand equals expand-then-clean for labels."""
         clean_first = expand_template_branches(
-            clean_template_yaml_response(RAW_TEMPLATE), "labels", _fetcher()
+            clean_template_response(RAW_TEMPLATE), "labels", _fetcher()
         )
-        expand_first = clean_template_yaml_response(
+        expand_first = clean_template_response(
             expand_template_branches(RAW_TEMPLATE, "labels", _fetcher())
         )
 
@@ -690,9 +687,9 @@ class TestPipelineOrderIndependence:
     def test_terms_mode_is_order_independent(self):
         """Test clean-then-expand equals expand-then-clean for terms."""
         clean_first = expand_template_branches(
-            clean_template_yaml_response(RAW_TEMPLATE), "terms", _fetcher()
+            clean_template_response(RAW_TEMPLATE), "terms", _fetcher()
         )
-        expand_first = clean_template_yaml_response(
+        expand_first = clean_template_response(
             expand_template_branches(RAW_TEMPLATE, "terms", _fetcher())
         )
 
@@ -709,9 +706,9 @@ class TestPipelineOrderIndependence:
             raise RuntimeError("nope")
 
         clean_first = expand_template_branches(
-            clean_template_yaml_response(RAW_TEMPLATE), "labels", failing
+            clean_template_response(RAW_TEMPLATE), "labels", failing
         )
-        expand_first = clean_template_yaml_response(
+        expand_first = clean_template_response(
             expand_template_branches(RAW_TEMPLATE, "labels", failing)
         )
 

@@ -54,9 +54,9 @@ class TestGetTemplate:
                 assert "children" in template_data
 
                 # Test that cleaning function works with real data
-                from src.cedar_mcp.processing import clean_template_yaml_response
+                from src.cedar_mcp.processing import clean_template_response
 
-                cleaned_data = clean_template_yaml_response(template_data)
+                cleaned_data = clean_template_response(template_data)
                 # Verify cleaned response structure
                 assert isinstance(cleaned_data, dict)
                 assert cleaned_data["type"] == "template"
@@ -169,20 +169,20 @@ class TestGetTemplate:
         except requests.exceptions.RequestException as e:
             pytest.fail(f"Failed to fetch template for structure test: {str(e)}")
 
-    def test_get_cedar_template_yaml_pipeline(
+    def test_get_cedar_template_pipeline(
         self, cedar_api_key: str, sample_cedar_template_id: str
     ):
         """Test the fetch-and-clean pipeline the get_cedar_template tool runs."""
-        from src.cedar_mcp.external_api import get_template_yaml
-        from src.cedar_mcp.processing import clean_template_yaml_response
+        from src.cedar_mcp.external_api import get_template
+        from src.cedar_mcp.processing import clean_template_response
 
-        template_data = get_template_yaml(sample_cedar_template_id, cedar_api_key)
+        template_data = get_template(sample_cedar_template_id, cedar_api_key)
 
         assert "error" not in template_data
         assert template_data["type"] == "template"
         assert "children" in template_data
 
-        cleaned_data = clean_template_yaml_response(template_data)
+        cleaned_data = clean_template_response(template_data)
 
         assert cleaned_data["type"] == "template"
         assert "name" in cleaned_data
@@ -469,9 +469,9 @@ class TestEndToEndWorkflow:
             raw_template = yaml.safe_load(response.text)
 
             # Step 2: Clean and transform template
-            from src.cedar_mcp.processing import clean_template_yaml_response
+            from src.cedar_mcp.processing import clean_template_response
 
-            cleaned_template = clean_template_yaml_response(raw_template)
+            cleaned_template = clean_template_response(raw_template)
 
             # Step 3: Verify complete transformation
             assert isinstance(cleaned_template, dict)
@@ -675,9 +675,9 @@ class TestEndToEndWorkflow:
             response.raise_for_status()
             raw_template = yaml.safe_load(response.text)
 
-            from src.cedar_mcp.processing import clean_template_yaml_response
+            from src.cedar_mcp.processing import clean_template_response
 
-            cleaned_template = clean_template_yaml_response(raw_template)
+            cleaned_template = clean_template_response(raw_template)
 
             # Look for fields with value constraints, at any depth: on this
             # template they all sit inside elements rather than at the top level

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from src.cedar_mcp.external_api import (
     get_children_from_branch,
     get_class_tree,
-    get_template_yaml,
+    get_template,
     search_instance_ids,
     get_instance,
     search_terms_from_branch,
@@ -209,8 +209,8 @@ class TestGetInstance:
 
 
 @pytest.mark.unit
-class TestGetTemplateYaml:
-    """Unit tests for get_template_yaml function."""
+class TestGetTemplate:
+    """Unit tests for get_template function."""
 
     SAMPLE_YAML = """
 type: "template"
@@ -236,7 +236,7 @@ children:
             "src.cedar_mcp.external_api._request_with_retry",
             return_value=self._mock_response(self.SAMPLE_YAML),
         ):
-            result = get_template_yaml("template-id", "key123")
+            result = get_template("template-id", "key123")
 
         assert result["type"] == "template"
         assert result["name"] == "RNAseq"
@@ -248,7 +248,7 @@ children:
             "src.cedar_mcp.external_api._request_with_retry",
             return_value=self._mock_response(self.SAMPLE_YAML),
         ) as mock_request:
-            get_template_yaml("template-id", "key123")
+            get_template("template-id", "key123")
 
         _, kwargs = mock_request.call_args
         assert kwargs["headers"]["Accept"] == "application/yaml"
@@ -261,7 +261,7 @@ children:
             "src.cedar_mcp.external_api._request_with_retry",
             return_value=self._mock_response(self.SAMPLE_YAML),
         ) as mock_request:
-            get_template_yaml("template-id", "key123", compact=False)
+            get_template("template-id", "key123", compact=False)
 
         _, kwargs = mock_request.call_args
         assert kwargs["params"] == {"compact": "false"}
@@ -272,9 +272,7 @@ children:
             "src.cedar_mcp.external_api._request_with_retry",
             return_value=self._mock_response(self.SAMPLE_YAML),
         ) as mock_request:
-            get_template_yaml(
-                "https://repo.metadatacenter.org/templates/944e5fa0", "key123"
-            )
+            get_template("https://repo.metadatacenter.org/templates/944e5fa0", "key123")
 
         args, _ = mock_request.call_args
         assert args[0] == (
@@ -288,7 +286,7 @@ children:
             "src.cedar_mcp.external_api._request_with_retry",
             return_value=self._mock_response("name: [unclosed"),
         ):
-            result = get_template_yaml("template-id", "key123")
+            result = get_template("template-id", "key123")
 
         assert "error" in result
         assert "Failed to parse CEDAR template YAML" in result["error"]
@@ -299,14 +297,14 @@ children:
             "src.cedar_mcp.external_api._request_with_retry",
             return_value=self._mock_response("- one\n- two\n"),
         ):
-            result = get_template_yaml("template-id", "key123")
+            result = get_template("template-id", "key123")
 
         assert "error" in result
         assert "expected a mapping" in result["error"]
 
     def test_invalid_api_key(self):
         """Test fetching a template as YAML with an invalid API key."""
-        result = get_template_yaml(
+        result = get_template(
             "https://repo.metadatacenter.org/templates/944e5fa0-f68b-4bdd-8664-74a3909429a9",
             "invalid-api-key-12345",
         )

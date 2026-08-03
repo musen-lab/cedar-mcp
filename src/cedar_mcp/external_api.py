@@ -457,7 +457,7 @@ async def async_get_class_tree(
     )
 
 
-def get_template_yaml(
+def get_template(
     template_id: str, cedar_api_key: str, compact: bool = True
 ) -> Dict[str, Any]:
     """
@@ -508,11 +508,11 @@ def get_template_yaml(
         return {"error": f"Failed to parse CEDAR template YAML: {str(e)}"}
 
 
-async def async_get_template_yaml(
+async def async_get_template(
     template_id: str, cedar_api_key: str, compact: bool = True
 ) -> Dict[str, Any]:
     """
-    Async wrapper around get_template_yaml.
+    Async wrapper around get_template.
 
     Delegates to the sync implementation via asyncio.to_thread so the
     event loop is not blocked during the HTTP call.
@@ -525,9 +525,7 @@ async def async_get_template_yaml(
     Returns:
         Dictionary parsed from the CEDAR YAML response or error information
     """
-    return await asyncio.to_thread(
-        get_template_yaml, template_id, cedar_api_key, compact
-    )
+    return await asyncio.to_thread(get_template, template_id, cedar_api_key, compact)
 
 
 def _request_with_retry(
