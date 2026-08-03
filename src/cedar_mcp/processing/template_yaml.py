@@ -16,11 +16,7 @@ from ..model import (
     SimplifiedTemplate,
     ValueConstraint,
 )
-from .branch_expansion import (
-    BranchExpansion,
-    BranchOptionFetcher,
-    expand_branch_constraints,
-)
+from .branch_expansion import normalize_expanded_branches
 
 # CEDAR YAML field types that carry layout or decoration rather than data.
 # The JSON-LD cleaner skips these too, since they are StaticTemplateFields.
@@ -140,6 +136,8 @@ def _extract_yaml_permissible_value_definitions(
                     BranchConstraint(
                         ontology_acronym=value["acronym"],
                         branch_iri=value["iri"],
+                        # Carried over when the template was expanded first
+                        options=value.get("options"),
                     )
                 )
 
@@ -280,8 +278,6 @@ def _process_yaml_children(
 
 def clean_template_yaml_response(
     template_data: Dict[str, Any],
-    expand_branches: BranchExpansion = "none",
-    fetch_branch_options: Optional[BranchOptionFetcher] = None,
 ) -> Dict[str, Any]:
     """
     Clean and transform a CEDAR template YAML rendering to simplified structure.
@@ -289,28 +285,28 @@ def clean_template_yaml_response(
     Static fields (rich text, section breaks, images) are dropped, as they hold
     layout rather than data.
 
+    Listing the terms allowed by an ontology branch is a separate concern, see
+    expand_template_branches. This carries over any that are already listed, so
+    the two can be applied in either order.
+
     Args:
         template_data: Template data parsed from the CEDAR YAML rendering
-        expand_branches: How much of each branch constraint to list, one of
-                        "none", "labels" or "terms". Anything but "none" costs
-                        one lookup per branch
-        fetch_branch_options: Callable returning the child terms for a branch,
-                             required for expansion to happen
 
     Returns:
         Cleaned and transformed template data as dictionary
     """
     template_name = template_data.get("name", "") or "Unnamed Template"
-    children = _process_yaml_children(template_data)
-
-    if expand_branches != "none" and fetch_branch_options is not None:
-        expand_branch_constraints(children, fetch_branch_options, expand_branches)
 
     output_template = SimplifiedTemplate(
         type="template",
         name=template_name,
-        children=children,
+        children=_process_yaml_children(template_data),
     )
 
     # Convert to dictionary for YAML export
-    return output_template.model_dump(exclude_none=True)
+    cleaned = output_template.model_dump(exclude_none=True)
+
+    # An expanded branch reports its terms instead of its root
+    normalize_expanded_branches(cleaned)
+
+    return cleaned

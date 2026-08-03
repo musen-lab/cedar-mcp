@@ -14,10 +14,12 @@ Cleaning and branch expansion are independent transforms over the same
 dictionary shape, so they can be applied in either order, or on their own.
 """
 
+from .branch_expansion import expand_template_branches
 from .instance import clean_template_instance_response
 from .template_yaml import clean_template_yaml_response
 
 __all__ = [
     "clean_template_instance_response",
     "clean_template_yaml_response",
+    "expand_template_branches",
 ]

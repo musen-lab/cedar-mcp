@@ -12,7 +12,11 @@ from fastmcp import FastMCP
 
 from .cache import BioPortalCache
 from .model import ClassOption
-from .processing import clean_template_yaml_response, clean_template_instance_response
+from .processing import (
+    clean_template_instance_response,
+    clean_template_yaml_response,
+    expand_template_branches,
+)
 from .external_api import (
     async_get_children_from_branch,
     async_get_class_tree,
@@ -186,17 +190,19 @@ def main():
         if "error" in template_data:
             return template_data
 
-        if expand_branches != "none":
-            # Branch lookups are blocking, so keep them off the event loop
-            return await asyncio.to_thread(
-                clean_template_yaml_response,
-                template_data,
-                expand_branches=expand_branches,
-                fetch_branch_options=fetch_branch_options,
-            )
-
         # Always clean the response
-        return clean_template_yaml_response(template_data)
+        cleaned = clean_template_yaml_response(template_data)
+
+        if expand_branches == "none":
+            return cleaned
+
+        # Branch lookups are blocking, so keep them off the event loop
+        return await asyncio.to_thread(
+            expand_template_branches,
+            cleaned,
+            expand_branches,
+            fetch_branch_options,
+        )
 
     @mcp.tool()
     async def get_instances_based_on_template(
