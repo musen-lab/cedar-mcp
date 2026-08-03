@@ -9,6 +9,7 @@ from src.cedar_mcp.processing.template import (
     _extract_datatype,
     _extract_default_value,
     _extract_permissible_value_definitions,
+    _transform_element,
     _transform_field,
     clean_template_response,
 )
@@ -720,3 +721,99 @@ class TestPipelineOrderIndependence:
 
         assert result["children"][0]["key"] == "analyte_class"
         assert result["children"][0]["values"][0]["termLabel"] == "Analyte class"
+
+
+@pytest.mark.unit
+class TestIsMultivalued:
+    """Tests for how multivalued is derived from a CEDAR field."""
+
+    def test_configuration_multiple(self):
+        """Test that configuration.multiple marks a plain field multivalued."""
+        field_data = {
+            "type": "text-field",
+            "name": "sample_id",
+            "configuration": {"required": True, "multiple": True, "minItems": 1},
+        }
+        assert _transform_field(field_data).multivalued is True
+
+    def test_no_configuration_is_single_valued(self):
+        """Test that a field with no configuration is single valued."""
+        assert (
+            _transform_field({"type": "text-field", "name": "x"}).multivalued is False
+        )
+
+    def test_multiple_false_is_single_valued(self):
+        """Test that an explicit multiple: false is respected."""
+        field_data = {
+            "type": "text-field",
+            "name": "x",
+            "configuration": {"multiple": False},
+        }
+        assert _transform_field(field_data).multivalued is False
+
+    def test_multi_select_list_without_multiple_key(self):
+        """Test that a multi-select list is multivalued with no multiple key.
+
+        CEDAR omits `multiple` for these, since the widget implies it.
+        """
+        field_data = {
+            "type": "multi-select-list-field",
+            "name": "x",
+            "values": [{"label": "A"}, {"label": "B"}],
+        }
+        assert _transform_field(field_data).multivalued is True
+
+    def test_single_select_list_is_single_valued(self):
+        """Test that a single-select list is not treated as multivalued."""
+        field_data = {
+            "type": "single-select-list-field",
+            "name": "x",
+            "values": [{"label": "A"}, {"label": "B"}],
+        }
+        assert _transform_field(field_data).multivalued is False
+
+    def test_attribute_value_field_without_multiple_key(self):
+        """Test that an attribute-value field is multivalued by nature."""
+        field_data = {"type": "attribute-value-field", "name": "x"}
+        assert _transform_field(field_data).multivalued is True
+
+    def test_checkbox_group_is_multivalued(self):
+        """Test that a checkbox with options is a multi-select."""
+        field_data = {
+            "type": "checkbox-field",
+            "name": "x",
+            "values": [{"label": "A"}, {"label": "B"}],
+        }
+        result = _transform_field(field_data)
+
+        assert result.multivalued is True
+        assert result.type == "string"
+
+    def test_bare_checkbox_is_a_single_boolean(self):
+        """Test that a checkbox with no options stays a single boolean."""
+        result = _transform_field({"type": "checkbox-field", "name": "x"})
+
+        assert result.multivalued is False
+        assert result.type == "boolean"
+
+    def test_configuration_wins_over_bare_checkbox(self):
+        """Test that an explicit multiple still applies to a bare checkbox."""
+        field_data = {
+            "type": "checkbox-field",
+            "name": "x",
+            "configuration": {"multiple": True},
+        }
+        assert _transform_field(field_data).multivalued is True
+
+    def test_elements_still_read_configuration_only(self):
+        """Test that elements are unaffected: CEDAR always emits their multiple."""
+        element = {
+            "type": "element",
+            "name": "outer",
+            "children": [],
+            "configuration": {"multiple": True, "minItems": 1},
+        }
+        assert _transform_element(element).multivalued is True
+
+        plain = {"type": "element", "name": "outer", "children": []}
+        assert _transform_element(plain).multivalued is False

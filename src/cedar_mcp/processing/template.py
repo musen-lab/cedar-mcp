@@ -39,6 +39,14 @@ _INTEGER_DATATYPES = {
     "xsd:byte",
 }
 
+# Field types whose widget already implies more than one value, so CEDAR leaves
+# `multiple` out of their configuration. Checkboxes are handled separately: a
+# group of them is a multi-select, but a lone one is a single boolean.
+_IMPLICITLY_MULTIVALUED_TYPES = {
+    "attribute-value-field",
+    "multi-select-list-field",
+}
+
 
 def _extract_datatype(field_data: Dict[str, Any]) -> str:
     """
@@ -194,6 +202,36 @@ def _extract_default_value(
     return None
 
 
+def _is_multivalued(field_data: Dict[str, Any], configuration: Dict[str, Any]) -> bool:
+    """
+    Determine whether a field accepts more than one value.
+
+    Usually this is `configuration.multiple`, but CEDAR omits that key for field
+    types whose widget already implies several values: attribute-value fields,
+    multi-select lists, and checkboxes. Reading the configuration alone would
+    report those as single valued.
+
+    A checkbox is the awkward one. A group of checkboxes is a multi-select over
+    its options, but a checkbox with no options is a single boolean toggle, which
+    is how _extract_datatype types it.
+
+    Args:
+        field_data: Field data from the CEDAR YAML rendering
+        configuration: The field's configuration block
+
+    Returns:
+        True if the field accepts more than one value
+    """
+    if configuration.get("multiple", False):
+        return True
+
+    field_type = field_data.get("type", "")
+    if field_type in _IMPLICITLY_MULTIVALUED_TYPES:
+        return True
+
+    return field_type == "checkbox-field" and bool(field_data.get("values"))
+
+
 def _transform_field(field_data: Dict[str, Any]) -> FieldDefinition:
     """
     Transform a single field from CEDAR YAML to output structure.
@@ -215,7 +253,7 @@ def _transform_field(field_data: Dict[str, Any]) -> FieldDefinition:
         label=label,
         type=_extract_datatype(field_data),
         required=configuration.get("required", False),
-        multivalued=configuration.get("multiple", False),
+        multivalued=_is_multivalued(field_data, configuration),
         pattern=field_data.get("regex"),
         default_value=_extract_default_value(field_data),
         permissible_values=_extract_permissible_value_definitions(field_data),
