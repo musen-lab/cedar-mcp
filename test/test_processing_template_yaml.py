@@ -13,6 +13,7 @@ from src.cedar_mcp.processing.template_yaml import (
 from src.cedar_mcp.model import (
     BranchConstraint,
     ClassConstraint,
+    ClassOption,
     ControlledTermDefault,
     FieldDefinition,
     LiteralConstraint,
@@ -552,10 +553,16 @@ class TestBranchExpansion:
         ],
     }
 
+    TERMS = [
+        ClassOption(label="DNA", term_iri="https://example.org/DNA"),
+        ClassOption(label="RNA", term_iri="https://example.org/RNA"),
+        ClassOption(label="Protein", term_iri="https://example.org/Protein"),
+    ]
+
     def _fetcher(self, calls):
         def fetch(branch_iri, ontology_acronym):
             calls.append((branch_iri, ontology_acronym))
-            return ["DNA", "RNA", "Protein"]
+            return list(self.TERMS)
 
         return fetch
 
@@ -567,14 +574,19 @@ class TestBranchExpansion:
         )
 
         assert calls == []
-        assert "options" not in result["children"][0]["permissible_values"][0]
 
-    def test_expands_branch_into_options(self):
-        """Test that child labels are listed under the branch constraint."""
+        # The branch is reported as a reference to its subtree
+        constraint = result["children"][0]["permissible_values"][0]
+        assert "options" not in constraint
+        assert constraint["ontology_acronym"] == "HRAVS"
+        assert constraint["branch_iri"].endswith("HRAVS_1000371")
+
+    def test_labels_mode_lists_labels_only(self):
+        """Test that "labels" lists the child labels and no IRIs."""
         calls = []
         result = clean_template_yaml_response(
             self.TEMPLATE,
-            expand_branches=True,
+            expand_branches="labels",
             fetch_branch_options=self._fetcher(calls),
         )
 
@@ -591,10 +603,64 @@ class TestBranchExpansion:
             ("https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371", "HRAVS")
         ]
 
+    def test_terms_mode_lists_labels_with_iris(self):
+        """Test that "terms" lists each child label with its IRI."""
+        calls = []
+        result = clean_template_yaml_response(
+            self.TEMPLATE,
+            expand_branches="terms",
+            fetch_branch_options=self._fetcher(calls),
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert constraint["type"] == "branch"
+        assert constraint["options"] == [
+            {"label": "DNA", "term_iri": "https://example.org/DNA"},
+            {"label": "RNA", "term_iri": "https://example.org/RNA"},
+            {"label": "Protein", "term_iri": "https://example.org/Protein"},
+        ]
+
+        assert "ontology_acronym" not in constraint
+        assert "branch_iri" not in constraint
+        assert len(calls) == 1
+
+    def test_none_mode_does_not_look_anything_up(self):
+        """Test that "none" is explicitly inert even with a fetcher present."""
+        calls = []
+        result = clean_template_yaml_response(
+            self.TEMPLATE,
+            expand_branches="none",
+            fetch_branch_options=self._fetcher(calls),
+        )
+
+        assert calls == []
+        assert "options" not in result["children"][0]["permissible_values"][0]
+
     def test_expansion_without_fetcher_is_a_no_op(self):
         """Test that asking for expansion with no fetcher changes nothing."""
-        result = clean_template_yaml_response(self.TEMPLATE, expand_branches=True)
-        assert "options" not in result["children"][0]["permissible_values"][0]
+        result = clean_template_yaml_response(self.TEMPLATE, expand_branches="labels")
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert "options" not in constraint
+        assert constraint["ontology_acronym"] == "HRAVS"
+
+    def test_second_pass_leaves_expanded_branches_alone(self):
+        """Test that re-expanding an already expanded branch does nothing."""
+        calls = []
+        fetch = self._fetcher(calls)
+
+        # Expand the parsed tree twice over, via the shared helper
+        from src.cedar_mcp.processing.branch_expansion import (
+            expand_branch_constraints,
+        )
+        from src.cedar_mcp.processing.template_yaml import _process_yaml_children
+
+        children = _process_yaml_children(self.TEMPLATE)
+        expand_branch_constraints(children, fetch, "labels")
+        expand_branch_constraints(children, fetch, "labels")
+
+        assert len(calls) == 1
+        assert children[0].permissible_values[0].options == ["DNA", "RNA", "Protein"]
 
     def test_non_branch_constraints_are_untouched(self):
         """Test that literal and ontology constraints gain no options."""
@@ -611,7 +677,7 @@ class TestBranchExpansion:
             ],
         }
         result = clean_template_yaml_response(
-            template, expand_branches=True, fetch_branch_options=self._fetcher([])
+            template, expand_branches="labels", fetch_branch_options=self._fetcher([])
         )
 
         constraint = result["children"][0]["permissible_values"][0]
@@ -642,7 +708,9 @@ class TestBranchExpansion:
         }
         calls = []
         result = clean_template_yaml_response(
-            template, expand_branches=True, fetch_branch_options=self._fetcher(calls)
+            template,
+            expand_branches="labels",
+            fetch_branch_options=self._fetcher(calls),
         )
 
         deep = result["children"][0]["children"][0]["children"][0]
@@ -656,7 +724,7 @@ class TestBranchExpansion:
             raise RuntimeError("BioPortal unavailable")
 
         result = clean_template_yaml_response(
-            self.TEMPLATE, expand_branches=True, fetch_branch_options=failing_fetch
+            self.TEMPLATE, expand_branches="labels", fetch_branch_options=failing_fetch
         )
 
         constraint = result["children"][0]["permissible_values"][0]
@@ -670,7 +738,7 @@ class TestBranchExpansion:
         """Test that a branch with no children gets no empty options list."""
         result = clean_template_yaml_response(
             self.TEMPLATE,
-            expand_branches=True,
+            expand_branches="labels",
             fetch_branch_options=lambda iri, acronym: [],
         )
 

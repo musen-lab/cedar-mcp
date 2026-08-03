@@ -12,6 +12,7 @@ from src.cedar_mcp.processing.template_json import (
 from src.cedar_mcp.model import (
     BranchConstraint,
     ClassConstraint,
+    ClassOption,
     ControlledTermDefault,
     FieldDefinition,
     LiteralConstraint,
@@ -800,3 +801,71 @@ class TestCleanTemplateResponseArrayFields:
         assert elements_array["multivalued"] is True
         assert len(elements_array["children"]) == 1
         assert elements_array["children"][0]["name"] == "Inner Field"
+
+
+@pytest.mark.unit
+class TestBranchExpansion:
+    """Tests for expanding branch constraints via the JSON-LD cleaner."""
+
+    TEMPLATE = {
+        "schema:name": "Test Template",
+        "_ui": {"order": ["analyte_class"]},
+        "properties": {
+            "analyte_class": {
+                "@type": "https://schema.metadatacenter.org/core/TemplateField",
+                "schema:name": "analyte_class",
+                "_ui": {"inputType": "textfield"},
+                "_valueConstraints": {
+                    "branches": [
+                        {
+                            "acronym": "HRAVS",
+                            "name": "Analyte class",
+                            "uri": "https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371",
+                        }
+                    ]
+                },
+            }
+        },
+    }
+
+    TERMS = [
+        ClassOption(label="DNA", term_iri="https://example.org/DNA"),
+        ClassOption(label="RNA", term_iri="https://example.org/RNA"),
+    ]
+
+    def _fetch(self, branch_iri, ontology_acronym):
+        return list(self.TERMS)
+
+    def test_not_expanded_by_default(self):
+        """Test that the JSON-LD cleaner leaves branches alone by default."""
+        result = clean_template_response(
+            self.TEMPLATE, fetch_branch_options=self._fetch
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert "options" not in constraint
+        assert constraint["ontology_acronym"] == "HRAVS"
+
+    def test_labels_mode(self):
+        """Test that "labels" lists child labels and drops the root."""
+        result = clean_template_response(
+            self.TEMPLATE, expand_branches="labels", fetch_branch_options=self._fetch
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert constraint["options"] == ["DNA", "RNA"]
+        assert "ontology_acronym" not in constraint
+        assert "branch_iri" not in constraint
+
+    def test_terms_mode(self):
+        """Test that "terms" lists child labels with their IRIs."""
+        result = clean_template_response(
+            self.TEMPLATE, expand_branches="terms", fetch_branch_options=self._fetch
+        )
+
+        constraint = result["children"][0]["permissible_values"][0]
+        assert constraint["options"] == [
+            {"label": "DNA", "term_iri": "https://example.org/DNA"},
+            {"label": "RNA", "term_iri": "https://example.org/RNA"},
+        ]
+        assert "branch_iri" not in constraint

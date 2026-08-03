@@ -5,12 +5,13 @@ import asyncio
 import os
 import sys
 import warnings
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Literal
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .cache import BioPortalCache
+from .model import ClassOption
 from .processing import clean_template_yaml_response, clean_template_instance_response
 from .external_api import (
     async_get_children_from_branch,
@@ -100,9 +101,15 @@ def main():
     # Initialize BioPortal cache
     cache = BioPortalCache()
 
-    def fetch_branch_options(branch_iri: str, ontology_acronym: str) -> List[str]:
+    def fetch_branch_options(
+        branch_iri: str, ontology_acronym: str
+    ) -> List[ClassOption]:
         """
-        Look up the labels of the terms directly under an ontology branch.
+        Look up the terms directly under an ontology branch.
+
+        Always returns labels with their IRIs; the cleaner drops the IRIs when
+        only labels were asked for. That keeps the cached BioPortal response
+        usable for either expansion mode.
 
         Results go through the BioPortal cache, since a single template can
         carry dozens of branch constraints.
@@ -112,7 +119,7 @@ def main():
             ontology_acronym: Ontology acronym the branch belongs to
 
         Returns:
-            List of child term labels
+            List of child terms as label and IRI pairs
 
         Raises:
             RuntimeError: If BioPortal could not be reached
@@ -137,15 +144,16 @@ def main():
             )
 
         return [
-            child["prefLabel"]
+            ClassOption(label=child["prefLabel"], term_iri=child["@id"])
             for child in result.get("collection", [])
-            if isinstance(child, dict) and "prefLabel" in child
+            if isinstance(child, dict) and "prefLabel" in child and "@id" in child
         ]
 
     # Register MCP tools
     @mcp.tool()
     async def get_cedar_template(
-        template_id: str, expand_branches: bool = False
+        template_id: str,
+        expand_branches: Literal["none", "labels", "terms"] = "none",
     ) -> Dict[str, Any]:
         """
         Get a template from the CEDAR repository.
@@ -154,14 +162,22 @@ def main():
         far cheaper way to read a template than the JSON-LD form: it leaves out
         provenance and other bookkeeping keys, so it costs fewer tokens.
 
+        A field restricted to an ontology branch reports that branch rather than
+        the values it allows. Use expand_branches to list those values, bearing
+        in mind that each branch costs one BioPortal lookup and a template can
+        easily have twenty of them.
+
         Args:
             template_id: The template ID or full URL from CEDAR repository
                         (e.g., "https://repo.metadatacenter.org/templates/e019284e-48d1-4494-bc83-ddefd28dfbac")
-            expand_branches: List the allowed terms for each ontology branch
-                            constraint under permissible_values. This costs one
-                            BioPortal lookup per branch and makes the response
-                            considerably larger, so leave it off unless the
-                            allowed values are needed (default: False)
+            expand_branches: How much of each ontology branch to list under
+                            permissible_values (default: "none"):
+                            "none" reports the branch itself and does no lookups;
+                            "labels" lists the allowed labels, which is enough to
+                            read a template but carries no IRIs;
+                            "terms" lists each label with its IRI, which is what
+                            filling in a controlled term field needs, at roughly
+                            1.7x the size of "labels"
 
         Returns:
             Template data from CEDAR, cleaned and transformed
@@ -170,13 +186,13 @@ def main():
         if "error" in template_data:
             return template_data
 
-        if expand_branches:
+        if expand_branches != "none":
             # Branch lookups are blocking, so keep them off the event loop
             return await asyncio.to_thread(
                 clean_template_yaml_response,
                 template_data,
-                True,
-                fetch_branch_options,
+                expand_branches=expand_branches,
+                fetch_branch_options=fetch_branch_options,
             )
 
         # Always clean the response

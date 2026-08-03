@@ -16,7 +16,11 @@ from ..model import (
     SimplifiedTemplate,
     ValueConstraint,
 )
-from .branch_expansion import BranchOptionFetcher, expand_branch_constraints
+from .branch_expansion import (
+    BranchExpansion,
+    BranchOptionFetcher,
+    expand_branch_constraints,
+)
 
 
 def _extract_datatype(field_data: Dict[str, Any]) -> str:
@@ -342,7 +346,7 @@ def _process_element_children(
 
 def clean_template_response(
     template_data: Dict[str, Any],
-    expand_branches: bool = False,
+    expand_branches: BranchExpansion = "none",
     fetch_branch_options: Optional[BranchOptionFetcher] = None,
 ) -> Dict[str, Any]:
     """
@@ -351,9 +355,10 @@ def clean_template_response(
 
     Args:
         template_data: Raw template data from CEDAR (JSON-LD format)
-        expand_branches: Whether to list the child terms of each branch
-                        constraint, which costs one lookup per branch
-        fetch_branch_options: Callable returning the child labels for a branch,
+        expand_branches: How much of each branch constraint to list, one of
+                        "none", "labels" or "terms". Anything but "none" costs
+                        one lookup per branch
+        fetch_branch_options: Callable returning the child terms for a branch,
                              required for expansion to happen
 
     Returns:
@@ -416,8 +421,10 @@ def clean_template_response(
                         element_child = _transform_element(item_name, item_data)
                         output_children.append(element_child)
 
-    if expand_branches and fetch_branch_options is not None:
-        expand_branch_constraints(output_children, fetch_branch_options)
+    if expand_branches != "none" and fetch_branch_options is not None:
+        expand_branch_constraints(
+            output_children, fetch_branch_options, expand_branches
+        )
 
     # Create output template
     output_template = SimplifiedTemplate(

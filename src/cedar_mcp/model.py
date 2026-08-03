@@ -56,10 +56,11 @@ class BranchConstraint(BaseModel):
         None,
         description="IRI of the branch root, dropped once the branch has been expanded",
     )
-    options: Optional[List[str]] = Field(
+    options: Optional[List[Union[ClassOption, str]]] = Field(
         None,
-        description="Labels of the terms under the branch root, "
-        "present only when branch expansion is enabled",
+        description="Terms under the branch root, present only when branch "
+        "expansion is enabled. Labels alone, or label and IRI pairs, "
+        "depending on the expansion mode",
     )
 
 

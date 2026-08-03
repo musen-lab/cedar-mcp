@@ -122,7 +122,7 @@ The `CEDAR_MCP_CACHE_TTL_SECONDS` and `CEDAR_MCP_CACHE_DIR` environment variable
 
 Here is the list of CEDAR tools with a short description
 
-* `get_cedar_template`: Fetches a template from the CEDAR repository, using CEDAR's compact YAML rendering so it costs fewer tokens to read than the JSON-LD form.
+* `get_cedar_template`: Fetches a template from the CEDAR repository, using CEDAR's compact YAML rendering so it costs fewer tokens to read than the JSON-LD form. Pass `expand_branches` to list the values allowed by each ontology branch: `"labels"` for their labels alone, `"terms"` for labels with their IRIs, or the default `"none"` to report the branch itself and skip the lookups.
 * `get_instances_based_on_template`: Gets template instances that belong to a specific template with pagination support.
 * `term_search_from_branch`: Searches BioPortal for standardized ontology terms within a specific branch.
 * `term_search_from_ontology`: Searches BioPortal for standardized ontology terms within an entire ontology.
