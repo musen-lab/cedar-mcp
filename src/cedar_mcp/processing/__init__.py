@@ -3,22 +3,21 @@
 """
 Cleaning and transformation of CEDAR responses.
 
-Each format CEDAR can return has its own module:
+Templates are handled in CEDAR's YAML rendering only, since it carries far
+fewer tokens than the JSON-LD form:
 
-- template_json: templates in JSON-LD format
 - template_yaml: templates in YAML format
+- branch_expansion: listing the terms allowed by an ontology branch
 - instance: template instances in JSON-LD format
 
-Both template cleaners produce the same simplified output, so callers do not
-care which format the template arrived in.
+Cleaning and branch expansion are independent transforms over the same
+dictionary shape, so they can be applied in either order, or on their own.
 """
 
 from .instance import clean_template_instance_response
-from .template_json import clean_template_response
 from .template_yaml import clean_template_yaml_response
 
 __all__ = [
     "clean_template_instance_response",
-    "clean_template_response",
     "clean_template_yaml_response",
 ]

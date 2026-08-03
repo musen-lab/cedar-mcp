@@ -2,7 +2,6 @@
 
 import pytest
 
-from src.cedar_mcp.processing.template_json import clean_template_response
 from src.cedar_mcp.processing.template_yaml import (
     _extract_yaml_datatype,
     _extract_yaml_default_value,
@@ -486,41 +485,6 @@ class TestCleanTemplateYamlResponse:
 
         assert len(result["children"]) == 1
         assert result["children"][0]["name"] == "lab_id"
-
-    def test_output_matches_json_cleaner_shape(self):
-        """Test that YAML and JSON-LD cleaning produce the same output shape."""
-        yaml_template = {
-            "type": "template",
-            "name": "Test Template",
-            "children": [
-                {
-                    "key": "field1",
-                    "type": "text-field",
-                    "name": "field1",
-                    "description": "A field",
-                    "prefLabel": "Field 1",
-                    "configuration": {"required": True},
-                }
-            ],
-        }
-        json_template = {
-            "schema:name": "Test Template",
-            "_ui": {"order": ["field1"]},
-            "properties": {
-                "field1": {
-                    "@type": "https://schema.metadatacenter.org/core/TemplateField",
-                    "schema:name": "field1",
-                    "schema:description": "A field",
-                    "skos:prefLabel": "Field 1",
-                    "_ui": {"inputType": "textfield"},
-                    "_valueConstraints": {"requiredValue": True},
-                }
-            },
-        }
-
-        assert clean_template_yaml_response(yaml_template) == clean_template_response(
-            json_template
-        )
 
 
 @pytest.mark.unit

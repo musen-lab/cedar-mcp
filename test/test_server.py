@@ -5,6 +5,7 @@ import warnings
 from typing import Dict
 from unittest.mock import patch
 import requests
+import yaml
 from src.cedar_mcp.external_api import search_instance_ids, get_instance
 import sys
 import io
@@ -29,7 +30,7 @@ class TestGetTemplate:
             # We'll test the function logic by extracting it
             # Since the function is defined inside main(), we need to test indirectly
             headers = {
-                "Accept": "application/json",
+                "Accept": "application/yaml",
                 "Authorization": f"apiKey {cedar_api_key}",
             }
 
@@ -41,18 +42,21 @@ class TestGetTemplate:
             )
 
             try:
-                response = requests.get(base_url, headers=headers, timeout=30)
+                response = requests.get(
+                    base_url, headers=headers, params={"compact": "true"}, timeout=30
+                )
                 response.raise_for_status()
-                template_data = response.json()
+                template_data = yaml.safe_load(response.text)
 
-                # Should receive valid JSON-LD data
+                # Should receive CEDAR's compact YAML rendering
                 assert isinstance(template_data, dict)
-                assert "@context" in template_data or "properties" in template_data
+                assert template_data["type"] == "template"
+                assert "children" in template_data
 
                 # Test that cleaning function works with real data
-                from src.cedar_mcp.processing import clean_template_response
+                from src.cedar_mcp.processing import clean_template_yaml_response
 
-                cleaned_data = clean_template_response(template_data)
+                cleaned_data = clean_template_yaml_response(template_data)
                 # Verify cleaned response structure
                 assert isinstance(cleaned_data, dict)
                 assert cleaned_data["type"] == "template"
@@ -66,7 +70,7 @@ class TestGetTemplate:
     def test_get_cedar_template_invalid_id(self, cedar_api_key: str):
         """Test fetching with invalid template ID."""
         headers = {
-            "Accept": "application/json",
+            "Accept": "application/yaml",
             "Authorization": f"apiKey {cedar_api_key}",
         }
 
@@ -88,7 +92,7 @@ class TestGetTemplate:
     def test_get_cedar_template_invalid_api_key(self, sample_cedar_template_id: str):
         """Test fetching with invalid API key."""
         headers = {
-            "Accept": "application/json",
+            "Accept": "application/yaml",
             "Authorization": "apiKey invalid-key-12345",
         }
 
@@ -132,7 +136,7 @@ class TestGetTemplate:
     ):
         """Test real CEDAR template data structure and content."""
         headers = {
-            "Accept": "application/json",
+            "Accept": "application/yaml",
             "Authorization": f"apiKey {cedar_api_key}",
         }
 
@@ -144,29 +148,23 @@ class TestGetTemplate:
         )
 
         try:
-            response = requests.get(base_url, headers=headers, timeout=30)
+            response = requests.get(
+                base_url, headers=headers, params={"compact": "true"}, timeout=30
+            )
             response.raise_for_status()
-            template_data = response.json()
+            template_data = yaml.safe_load(response.text)
 
-            # Verify CEDAR JSON-LD structure
+            # Verify CEDAR's compact YAML structure
             assert isinstance(template_data, dict)
+            assert template_data["type"] == "template"
+            assert isinstance(template_data["name"], str)
+            assert isinstance(template_data["children"], list)
 
-            # Common CEDAR template fields
-            if "@context" in template_data:
-                assert isinstance(template_data["@context"], dict)
-
-            if "properties" in template_data:
-                assert isinstance(template_data["properties"], dict)
-
-            if "_ui" in template_data:
-                assert isinstance(template_data["_ui"], dict)
-                if "order" in template_data["_ui"]:
-                    assert isinstance(template_data["_ui"]["order"], list)
-
-            # Should have schema metadata
-            schema_fields = ["schema:name", "schema:description", "title"]
-            has_schema_field = any(field in template_data for field in schema_fields)
-            assert has_schema_field, "Template should have schema metadata"
+            # Every child is tagged with the kind of artifact it is
+            for child in template_data["children"]:
+                assert isinstance(child, dict)
+                assert "type" in child
+                assert "name" in child
 
         except requests.exceptions.RequestException as e:
             pytest.fail(f"Failed to fetch template for structure test: {str(e)}")
@@ -203,6 +201,7 @@ class TestGetTemplate:
         )
         auth = f"apiKey {cedar_api_key}"
 
+        # The JSON-LD rendering is the form this server deliberately does not use
         json_response = requests.get(
             base_url,
             headers={"Accept": "application/json", "Authorization": auth},
@@ -223,7 +222,7 @@ class TestGetTemplate:
     def test_cedar_api_authentication_header(self, cedar_api_key: str):
         """Test CEDAR API authentication header format."""
         headers = {
-            "Accept": "application/json",
+            "Accept": "application/yaml",
             "Authorization": f"apiKey {cedar_api_key}",
         }
 
@@ -451,7 +450,7 @@ class TestEndToEndWorkflow:
         """Test complete workflow from CEDAR API to cleaned template."""
         # Step 1: Fetch from CEDAR API
         headers = {
-            "Accept": "application/json",
+            "Accept": "application/yaml",
             "Authorization": f"apiKey {cedar_api_key}",
         }
 
@@ -463,14 +462,16 @@ class TestEndToEndWorkflow:
         )
 
         try:
-            response = requests.get(base_url, headers=headers, timeout=30)
+            response = requests.get(
+                base_url, headers=headers, params={"compact": "true"}, timeout=30
+            )
             response.raise_for_status()
-            raw_template = response.json()
+            raw_template = yaml.safe_load(response.text)
 
             # Step 2: Clean and transform template
-            from src.cedar_mcp.processing import clean_template_response
+            from src.cedar_mcp.processing import clean_template_yaml_response
 
-            cleaned_template = clean_template_response(raw_template)
+            cleaned_template = clean_template_yaml_response(raw_template)
 
             # Step 3: Verify complete transformation
             assert isinstance(cleaned_template, dict)
@@ -496,7 +497,8 @@ class TestEndToEndWorkflow:
         self, cedar_api_key: str, sample_cedar_template_instance_id: str
     ):
         """Test complete workflow from CEDAR API to cleaned template instance."""
-        # Step 1: Fetch template instance from CEDAR API
+        # Step 1: Fetch template instance from CEDAR API.
+        # Instances are still JSON-LD; only templates moved to YAML.
         headers = {
             "Accept": "application/json",
             "Authorization": f"apiKey {cedar_api_key}",
@@ -655,7 +657,7 @@ class TestEndToEndWorkflow:
         """Test template processing returns properly structured value constraints."""
         # Fetch a real template
         headers = {
-            "Accept": "application/json",
+            "Accept": "application/yaml",
             "Authorization": f"apiKey {cedar_api_key}",
         }
 
@@ -667,24 +669,30 @@ class TestEndToEndWorkflow:
         )
 
         try:
-            response = requests.get(base_url, headers=headers, timeout=30)
+            response = requests.get(
+                base_url, headers=headers, params={"compact": "true"}, timeout=30
+            )
             response.raise_for_status()
-            raw_template = response.json()
+            raw_template = yaml.safe_load(response.text)
 
-            from src.cedar_mcp.processing import clean_template_response
+            from src.cedar_mcp.processing import clean_template_yaml_response
 
-            cleaned_template = clean_template_response(raw_template)
+            cleaned_template = clean_template_yaml_response(raw_template)
 
-            # Look for fields with value constraints
-            fields_with_values = [
-                field
-                for field in cleaned_template.get("children", [])
-                if field.get("values") is not None
-            ]
+            # Look for fields with value constraints, at any depth: on this
+            # template they all sit inside elements rather than at the top level
+            def walk(children):
+                for child in children:
+                    if child.get("permissible_values") is not None:
+                        yield child
+                    yield from walk(child.get("children", []) or [])
+
+            fields_with_values = list(walk(cleaned_template.get("children", [])))
+            assert fields_with_values, "Template should have controlled term fields"
 
             # If there are controlled term fields, verify they're properly structured
             for field in fields_with_values:
-                for constraint in field["values"]:
+                for constraint in field["permissible_values"]:
                     assert "type" in constraint
                     assert constraint["type"] in {
                         "literal",

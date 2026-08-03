@@ -286,10 +286,8 @@ def clean_template_yaml_response(
     """
     Clean and transform a CEDAR template YAML rendering to simplified structure.
 
-    Produces the same output shape as clean_template_response, so consumers do
-    not care whether the template arrived as JSON-LD or YAML. Static fields
-    (rich text, section breaks, images) are dropped, as they hold layout rather
-    than data.
+    Static fields (rich text, section breaks, images) are dropped, as they hold
+    layout rather than data.
 
     Args:
         template_data: Template data parsed from the CEDAR YAML rendering

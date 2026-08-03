@@ -457,71 +457,16 @@ async def async_get_class_tree(
     )
 
 
-def get_template_json(template_id: str, cedar_api_key: str) -> Dict[str, Any]:
-    """
-    Fetch a template from the CEDAR repository in JSON-LD format.
-
-    See get_template_yaml for the cheaper YAML rendering of the same template.
-
-    Args:
-        template_id: The template ID or full URL from CEDAR repository
-                    (e.g., "https://repo.metadatacenter.org/templates/...")
-        cedar_api_key: CEDAR API key for authentication
-
-    Returns:
-        Dictionary containing raw CEDAR template data or error information
-    """
-    try:
-        headers = {
-            "Accept": "application/json",
-            "Authorization": f"apiKey {cedar_api_key}",
-        }
-
-        # Encode the template ID for URL
-        encoded_template_id = quote(template_id, safe="")
-
-        # Build the URL
-        base_url = (
-            f"https://resource.metadatacenter.org/templates/{encoded_template_id}"
-        )
-
-        response = _request_with_retry(base_url, headers=headers)
-        response.raise_for_status()
-        return response.json()
-
-    except requests.exceptions.RequestException as e:
-        return {"error": f"Failed to fetch CEDAR template: {str(e)}"}
-
-
-async def async_get_template_json(
-    template_id: str, cedar_api_key: str
-) -> Dict[str, Any]:
-    """
-    Async wrapper around get_template_json.
-
-    Delegates to the sync implementation via asyncio.to_thread so the
-    event loop is not blocked during the HTTP call.
-
-    Args:
-        template_id: The template ID or full URL from CEDAR repository
-        cedar_api_key: CEDAR API key for authentication
-
-    Returns:
-        Dictionary containing raw CEDAR template data or error information
-    """
-    return await asyncio.to_thread(get_template_json, template_id, cedar_api_key)
-
-
 def get_template_yaml(
     template_id: str, cedar_api_key: str, compact: bool = True
 ) -> Dict[str, Any]:
     """
     Fetch a template from the CEDAR repository in YAML format.
 
-    This is the token-efficient counterpart to get_template_json, which returns
-    the verbose JSON-LD representation. CEDAR renders the same template as YAML,
-    and the compact rendering drops bookkeeping keys such as provenance and
-    property IRIs, so the result costs far fewer tokens to read.
+    CEDAR can also render a template as JSON-LD, but that form costs several
+    times as many tokens for the same content, so it is not used here. The
+    compact rendering additionally drops bookkeeping keys such as provenance
+    and property IRIs.
 
     Args:
         template_id: The template ID or full URL from CEDAR repository
