@@ -26,9 +26,14 @@ BranchOptionFetcher = Callable[[str, str], List[ClassOption]]
 # in either order.
 _CONSTRAINT_KEYS = ("values", "permissible_values")
 
+# How CEDAR's YAML names a source ontology and a branch root: its current
+# spelling first, then the one it used before renaming them, which is still read.
+CEDAR_ACRONYM_KEYS = ("sourceAcronym", "acronym")
+CEDAR_BRANCH_IRI_KEYS = ("termBaseIri", "iri")
+
 # The branch root, as CEDAR spells it and as the cleaner renames it.
-_IRI_KEYS = ("iri", "branch_iri")
-_ACRONYM_KEYS = ("acronym", "ontology_acronym")
+_IRI_KEYS = (*CEDAR_BRANCH_IRI_KEYS, "branch_iri")
+_ACRONYM_KEYS = (*CEDAR_ACRONYM_KEYS, "ontology_acronym")
 _CLEANED_ROOT_KEYS = ("branch_iri", "ontology_acronym")
 
 
@@ -149,8 +154,8 @@ def _expand_constraint(
     if "options" in constraint:
         return
 
-    branch_iri = _first_value(constraint, _IRI_KEYS)
-    ontology_acronym = _first_value(constraint, _ACRONYM_KEYS)
+    branch_iri = first_value(constraint, _IRI_KEYS)
+    ontology_acronym = first_value(constraint, _ACRONYM_KEYS)
     if branch_iri is None or ontology_acronym is None:
         return
 
@@ -174,7 +179,7 @@ def _expand_constraint(
         constraint["options"] = [term.label for term in terms]
 
 
-def _first_value(constraint: Dict[str, Any], keys: tuple) -> Optional[str]:
+def first_value(constraint: Dict[str, Any], keys: tuple) -> Optional[str]:
     """
     Return the first present, non-empty string among the given keys.
 

@@ -221,6 +221,60 @@ class TestExtractPermissibleValueDefinitions:
         assert isinstance(result[1], OntologyConstraint)
         assert isinstance(result[2], BranchConstraint)
 
+    def test_extract_ontology_values_current_spelling(self):
+        """Test that an ontology named by `sourceAcronym`, as CEDAR renders it now, is read."""
+        field_data = {
+            "values": [
+                {
+                    "type": "ontology",
+                    "sourceAcronym": "ISO639-1",
+                    "sourceName": "ISO639-1",
+                }
+            ]
+        }
+        result = _extract_permissible_value_definitions(field_data)
+
+        assert result is not None
+        assert isinstance(result[0], OntologyConstraint)
+        assert result[0].ontology_acronyms == ["ISO639-1"]
+
+    def test_extract_branch_values_current_spelling(self):
+        """Test that a branch named by `sourceAcronym` and `termBaseIri`, as CEDAR renders it now, is read."""
+        field_data = {
+            "values": [
+                {
+                    "type": "branch",
+                    "sourceAcronym": "HRAVS",
+                    "sourceName": "undefined (HRAVS)",
+                    "termBaseIri": "https://purl.humanatlas.io/vocab/hravs#HRAVS_1000361",
+                    "termBaseLabel": "Dataset type",
+                    "termMaxDepth": 0,
+                }
+            ]
+        }
+        result = _extract_permissible_value_definitions(field_data)
+
+        assert result is not None
+        assert isinstance(result[0], BranchConstraint)
+        assert result[0].ontology_acronym == "HRAVS"
+        assert (
+            result[0].branch_iri
+            == "https://purl.humanatlas.io/vocab/hravs#HRAVS_1000361"
+        )
+
+    def test_unreadable_constraint_is_logged(self, caplog):
+        """Test that a typed entry missing its keys is reported rather than dropped silently."""
+        field_data = {
+            "name": "dataset_type",
+            "values": [{"type": "branch", "someNewAcronym": "HRAVS"}],
+        }
+        with caplog.at_level("WARNING"):
+            result = _extract_permissible_value_definitions(field_data)
+
+        assert result is None
+        assert "branch" in caplog.text
+        assert "dataset_type" in caplog.text
+
 
 @pytest.mark.unit
 class TestExtractDefaultValue:
@@ -605,6 +659,34 @@ class TestExpandTemplateBranches:
 
         # A raw template keeps its own keys so it stays a usable CEDAR artifact
         assert all("acronym" in b and "iri" in b for b in branches)
+
+    def test_expands_raw_template_in_current_spelling(self):
+        """Test that a branch spelled as CEDAR renders it now is expanded."""
+        template = {
+            "type": "template",
+            "name": "current",
+            "children": [
+                {
+                    "key": "analyte_class",
+                    "type": "controlled-term-field",
+                    "name": "analyte_class",
+                    "values": [
+                        {
+                            "type": "branch",
+                            "sourceAcronym": "HRAVS",
+                            "termBaseIri": "https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371",
+                        }
+                    ],
+                }
+            ],
+        }
+        calls = []
+        result = expand_template_branches(template, "labels", _fetcher(calls))
+
+        assert calls == [
+            ("https://purl.humanatlas.io/vocab/hravs#HRAVS_1000371", "HRAVS")
+        ]
+        assert _branches(result)[0]["options"] == ["DNA", "RNA"]
 
     def test_expands_cleaned_template_and_drops_root(self):
         """Test that a cleaned template expands and loses the branch root."""

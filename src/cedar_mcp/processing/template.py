@@ -5,6 +5,7 @@
 Templates arrive as CEDAR's YAML rendering, parsed into a dictionary.
 """
 
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 from ..model import (
@@ -19,7 +20,14 @@ from ..model import (
     SimplifiedTemplate,
     ValueConstraint,
 )
-from .branch_expansion import normalize_expanded_branches
+from .branch_expansion import (
+    CEDAR_ACRONYM_KEYS,
+    CEDAR_BRANCH_IRI_KEYS,
+    first_value,
+    normalize_expanded_branches,
+)
+
+logger = logging.getLogger(__name__)
 
 # CEDAR YAML field types that carry layout or decoration rather than data.
 # The JSON-LD cleaner skips these too, since they are StaticTemplateFields.
@@ -127,12 +135,17 @@ def _extract_permissible_value_definitions(
             if "label" in value:
                 literals.append(value["label"])
         elif value_type == "ontology":
-            if "acronym" in value:
-                acronyms.append(value["acronym"])
+            acronym = first_value(value, CEDAR_ACRONYM_KEYS)
+            if acronym is None:
+                _warn_unreadable(field_data, value)
+            else:
+                acronyms.append(acronym)
         elif value_type == "valueSet":
             # Fold value sets into ontology acronyms, as the JSON-LD cleaner does
             if "valueSetName" in value:
                 acronyms.append(value["valueSetName"])
+            else:
+                _warn_unreadable(field_data, value)
         elif value_type == "class":
             if "iri" in value:
                 class_options.append(
@@ -141,12 +154,18 @@ def _extract_permissible_value_definitions(
                         term_iri=value["iri"],
                     )
                 )
+            else:
+                _warn_unreadable(field_data, value)
         elif value_type == "branch":
-            if "acronym" in value and "iri" in value:
+            acronym = first_value(value, CEDAR_ACRONYM_KEYS)
+            branch_iri = first_value(value, CEDAR_BRANCH_IRI_KEYS)
+            if acronym is None or branch_iri is None:
+                _warn_unreadable(field_data, value)
+            else:
                 branches.append(
                     BranchConstraint(
-                        ontology_acronym=value["acronym"],
-                        branch_iri=value["iri"],
+                        ontology_acronym=acronym,
+                        branch_iri=branch_iri,
                         # Carried over when the template was expanded first
                         options=value.get("options"),
                     )
@@ -163,6 +182,26 @@ def _extract_permissible_value_definitions(
     result.extend(branches)
 
     return result if result else None
+
+
+def _warn_unreadable(field_data: Dict[str, Any], value: Dict[str, Any]) -> None:
+    """
+    Report a controlled-value entry that lacks the keys its type needs.
+
+    Such an entry is left out of the cleaned field, which then looks like a
+    free-text field. That is how a renamed key in CEDAR's rendering shows up,
+    so it is logged rather than dropped silently.
+
+    Args:
+        field_data: Field data from the CEDAR YAML rendering
+        value: The entry from the field's `values` list that could not be read
+    """
+    logger.warning(
+        "Dropped a %s constraint of field %r: it lacks a key it needs, and has only %s",
+        value.get("type"),
+        field_data.get("name", field_data.get("key")),
+        sorted(value),
+    )
 
 
 def _extract_default_value(
